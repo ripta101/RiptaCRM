@@ -12,9 +12,10 @@ type Action =
   | { type: "OPEN_TAB"; tab: InteractionTab }
   | { type: "CLOSE_TAB"; id: string }
   | { type: "SET_ACTIVE_TAB"; id: string | null }
-  | { type: "RENAME_TAB"; id: string; title: string };
+  | { type: "RENAME_TAB"; id: string; title: string }
+  | { type: "REQUEST_CLOSE"; id: string };
 
-const initialState: InteractionsState = { tabs: [], activeTabId: null };
+const initialState: InteractionsState = { tabs: [], activeTabId: null, closeRequestedTabId: null };
 
 function reducer(state: InteractionsState, action: Action): InteractionsState {
   switch (action.type) {
@@ -23,20 +24,21 @@ function reducer(state: InteractionsState, action: Action): InteractionsState {
       if (existing) {
         return { ...state, activeTabId: existing.id };
       }
-      return { tabs: [...state.tabs, action.tab], activeTabId: action.tab.id };
+      return { ...state, tabs: [...state.tabs, action.tab], activeTabId: action.tab.id };
     }
     case "CLOSE_TAB": {
       const closingIndex = state.tabs.findIndex((tab) => tab.id === action.id);
       if (closingIndex === -1) return state;
 
       const tabs = state.tabs.filter((tab) => tab.id !== action.id);
+      const closeRequestedTabId = state.closeRequestedTabId === action.id ? null : state.closeRequestedTabId;
 
       if (state.activeTabId !== action.id) {
-        return { tabs, activeTabId: state.activeTabId };
+        return { ...state, tabs, closeRequestedTabId };
       }
 
       const fallback = tabs[closingIndex] ?? tabs[closingIndex - 1] ?? null;
-      return { tabs, activeTabId: fallback ? fallback.id : null };
+      return { ...state, tabs, activeTabId: fallback ? fallback.id : null, closeRequestedTabId };
     }
     case "SET_ACTIVE_TAB":
       return { ...state, activeTabId: action.id };
@@ -45,6 +47,8 @@ function reducer(state: InteractionsState, action: Action): InteractionsState {
         ...state,
         tabs: state.tabs.map((tab) => (tab.id === action.id ? { ...tab, title: action.title } : tab)),
       };
+    case "REQUEST_CLOSE":
+      return { ...state, activeTabId: action.id, closeRequestedTabId: action.id };
     default:
       return state;
   }
@@ -55,6 +59,7 @@ interface InteractionsContextValue extends InteractionsState {
   closeInteraction: (id: string) => void;
   setActiveTab: (id: string | null) => void;
   renameTab: (id: string, title: string) => void;
+  requestClose: (id: string) => void;
 }
 
 const InteractionsContext = createContext<InteractionsContextValue | undefined>(undefined);
@@ -78,9 +83,13 @@ export function InteractionsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "RENAME_TAB", id, title });
   }, []);
 
+  const requestClose = useCallback((id: string) => {
+    dispatch({ type: "REQUEST_CLOSE", id });
+  }, []);
+
   const value = useMemo<InteractionsContextValue>(
-    () => ({ ...state, openInteraction, closeInteraction, setActiveTab, renameTab }),
-    [state, openInteraction, closeInteraction, setActiveTab, renameTab],
+    () => ({ ...state, openInteraction, closeInteraction, setActiveTab, renameTab, requestClose }),
+    [state, openInteraction, closeInteraction, setActiveTab, renameTab, requestClose],
   );
 
   return <InteractionsContext.Provider value={value}>{children}</InteractionsContext.Provider>;

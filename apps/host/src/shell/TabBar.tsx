@@ -3,7 +3,15 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useInteractions } from "../interactions/InteractionsContext";
 
 export function TabBar() {
-  const { tabs, activeTabId, setActiveTab, closeInteraction } = useInteractions();
+  const { tabs, activeTabId, setActiveTab, closeInteraction, requestClose } = useInteractions();
+
+  function handleCloseClick(tab: (typeof tabs)[number]) {
+    if (tab.kind === "customer-lookup") {
+      requestClose(tab.id);
+    } else {
+      closeInteraction(tab.id);
+    }
+  }
 
   return (
     <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
@@ -27,7 +35,7 @@ export function TabBar() {
                   aria-label={`Close ${tab.title}`}
                   onClick={(event) => {
                     event.stopPropagation();
-                    closeInteraction(tab.id);
+                    handleCloseClick(tab);
                   }}
                 >
                   <CloseIcon fontSize="inherit" />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, List, ListItemButton, ListItemText, Paper, Typography } from "@mui/material";
+import { Box, Button, List, ListItemButton, ListItemText, Paper, Typography } from "@mui/material";
 import type {
   CreateCustomerInput,
   CustomerDetail,
@@ -25,6 +25,7 @@ interface InteractionWorkspaceProps {
   activeMenuItem: CustomerMenuItem;
   onSelectCustomerMenu: (customerId: string, item: CustomerMenuItem) => void;
   onCustomerAdded: (detail: CustomerDetail) => void;
+  onWrapUp: () => void;
 }
 
 export function InteractionWorkspace({
@@ -33,6 +34,7 @@ export function InteractionWorkspace({
   activeMenuItem,
   onSelectCustomerMenu,
   onCustomerAdded,
+  onWrapUp,
 }: InteractionWorkspaceProps) {
   const [content, setContent] = useState<WorkspaceContent>({ kind: "menu" });
 
@@ -125,88 +127,96 @@ export function InteractionWorkspace({
   const activeCustomer = confirmedCustomers.find((c) => c.id === activeCustomerId) ?? null;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: { xs: "column", md: "row" },
-        gap: 2,
-        alignItems: { xs: "stretch", md: "flex-start" },
-      }}
-    >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
-        <Paper variant="outlined" sx={{ width: { xs: "100%", md: 260 } }}>
-          <Typography variant="overline" color="text.secondary" sx={{ px: 2, pt: 2, display: "block" }}>
-            Interaction
-          </Typography>
-          <List dense>
-            <ListItemButton
-              selected={content.kind !== "menu"}
-              onClick={() => setContent({ kind: "search" })}
-            >
-              <ListItemText primary="Search Customer" />
-            </ListItemButton>
-          </List>
-        </Paper>
+    <Box>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          gap: 2,
+          alignItems: { xs: "stretch", md: "flex-start" },
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+          <Paper variant="outlined" sx={{ width: { xs: "100%", md: 260 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ px: 2, pt: 2, display: "block" }}>
+              Interaction
+            </Typography>
+            <List dense>
+              <ListItemButton
+                selected={content.kind !== "menu"}
+                onClick={() => setContent({ kind: "search" })}
+              >
+                <ListItemText primary="Search Customer" />
+              </ListItemButton>
+            </List>
+          </Paper>
 
-        {confirmedCustomers.map((customer) => (
-          <CustomerMenuBox
-            key={customer.id}
-            customer={customer}
-            isActive={content.kind === "menu" && customer.id === activeCustomerId}
-            activeItem={activeMenuItem}
-            onSelect={(id, item) => {
-              onSelectCustomerMenu(id, item);
-              setContent({ kind: "menu" });
-            }}
-          />
-        ))}
+          {confirmedCustomers.map((customer) => (
+            <CustomerMenuBox
+              key={customer.id}
+              customer={customer}
+              isActive={content.kind === "menu" && customer.id === activeCustomerId}
+              activeItem={activeMenuItem}
+              onSelect={(id, item) => {
+                onSelectCustomerMenu(id, item);
+                setContent({ kind: "menu" });
+              }}
+            />
+          ))}
+        </Box>
+
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          {content.kind === "menu" && activeCustomer && activeMenuItem === "profile" && (
+            <CustomerProfileContent customer={activeCustomer} />
+          )}
+          {content.kind === "menu" && activeCustomer && activeMenuItem === "amend" && (
+            <ComingSoonContent title="Amend Customer" customer={activeCustomer} />
+          )}
+          {content.kind === "menu" && activeCustomer && activeMenuItem === "complaint" && (
+            <ComingSoonContent title="Lodge a Complaint" customer={activeCustomer} />
+          )}
+
+          {content.kind === "search" && (
+            <SearchForm
+              values={searchParams}
+              onChange={handleSearchFieldChange}
+              onSubmit={handleSearch}
+              onCreateCustomer={handleShowCreateForm}
+              searching={searching}
+              error={searchError}
+            />
+          )}
+
+          {content.kind === "browse" && (
+            <MasterDetailView
+              results={content.results}
+              selectedCustomerId={candidateId}
+              onSelectCustomer={handleSelectCandidate}
+              detail={candidateDetail}
+              detailLoading={candidateLoading}
+              detailError={candidateError}
+              onNewSearch={() => setContent({ kind: "search" })}
+              onConfirm={handleConfirmCandidate}
+            />
+          )}
+
+          {content.kind === "createCustomer" && (
+            <CreateCustomerForm
+              values={createParams}
+              onChange={handleCreateFieldChange}
+              onSubmit={handleCreateCustomer}
+              onBack={() => setContent({ kind: "search" })}
+              submitting={creating}
+              error={createError}
+            />
+          )}
+        </Box>
       </Box>
 
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        {content.kind === "menu" && activeCustomer && activeMenuItem === "profile" && (
-          <CustomerProfileContent customer={activeCustomer} />
-        )}
-        {content.kind === "menu" && activeCustomer && activeMenuItem === "amend" && (
-          <ComingSoonContent title="Amend Customer" customer={activeCustomer} />
-        )}
-        {content.kind === "menu" && activeCustomer && activeMenuItem === "complaint" && (
-          <ComingSoonContent title="Lodge a Complaint" customer={activeCustomer} />
-        )}
-
-        {content.kind === "search" && (
-          <SearchForm
-            values={searchParams}
-            onChange={handleSearchFieldChange}
-            onSubmit={handleSearch}
-            onCreateCustomer={handleShowCreateForm}
-            searching={searching}
-            error={searchError}
-          />
-        )}
-
-        {content.kind === "browse" && (
-          <MasterDetailView
-            results={content.results}
-            selectedCustomerId={candidateId}
-            onSelectCustomer={handleSelectCandidate}
-            detail={candidateDetail}
-            detailLoading={candidateLoading}
-            detailError={candidateError}
-            onNewSearch={() => setContent({ kind: "search" })}
-            onConfirm={handleConfirmCandidate}
-          />
-        )}
-
-        {content.kind === "createCustomer" && (
-          <CreateCustomerForm
-            values={createParams}
-            onChange={handleCreateFieldChange}
-            onSubmit={handleCreateCustomer}
-            onBack={() => setContent({ kind: "search" })}
-            submitting={creating}
-            error={createError}
-          />
-        )}
+      <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 2 }}>
+        <Button variant="outlined" onClick={onWrapUp}>
+          Wrap Up
+        </Button>
       </Box>
     </Box>
   );

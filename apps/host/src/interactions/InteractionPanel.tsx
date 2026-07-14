@@ -8,7 +8,7 @@ interface InteractionPanelProps {
 }
 
 export function InteractionPanel({ tab }: InteractionPanelProps) {
-  const { renameTab } = useInteractions();
+  const { renameTab, closeRequestedTabId, closeInteraction } = useInteractions();
 
   switch (tab.kind) {
     case "customer-lookup":
@@ -17,6 +17,8 @@ export function InteractionPanel({ tab }: InteractionPanelProps) {
           onCustomerIdentified={(customer) =>
             renameTab(tab.id, `${customer.firstName} ${customer.lastName}`)
           }
+          closeRequested={closeRequestedTabId === tab.id}
+          onInteractionEnded={() => closeInteraction(tab.id)}
         />
       );
     default:

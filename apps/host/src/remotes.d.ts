@@ -4,6 +4,8 @@ declare module "customer/CustomerLookupModule" {
 
   export interface CustomerLookupModuleProps {
     onCustomerIdentified?: (customer: CustomerSummary) => void;
+    closeRequested?: boolean;
+    onInteractionEnded?: () => void;
   }
 
   const CustomerLookupModule: ComponentType<CustomerLookupModuleProps>;

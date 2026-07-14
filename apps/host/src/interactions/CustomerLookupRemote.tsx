@@ -7,9 +7,15 @@ const CustomerLookupModule = lazy(() => import("customer/CustomerLookupModule"))
 
 interface CustomerLookupRemoteProps {
   onCustomerIdentified?: (customer: CustomerSummary) => void;
+  closeRequested?: boolean;
+  onInteractionEnded?: () => void;
 }
 
-export function CustomerLookupRemote({ onCustomerIdentified }: CustomerLookupRemoteProps) {
+export function CustomerLookupRemote({
+  onCustomerIdentified,
+  closeRequested,
+  onInteractionEnded,
+}: CustomerLookupRemoteProps) {
   return (
     <RemoteLoadErrorBoundary
       fallback={
@@ -26,7 +32,11 @@ export function CustomerLookupRemote({ onCustomerIdentified }: CustomerLookupRem
           </Box>
         }
       >
-        <CustomerLookupModule onCustomerIdentified={onCustomerIdentified} />
+        <CustomerLookupModule
+          onCustomerIdentified={onCustomerIdentified}
+          closeRequested={closeRequested}
+          onInteractionEnded={onInteractionEnded}
+        />
       </Suspense>
     </RemoteLoadErrorBoundary>
   );

@@ -9,4 +9,5 @@ export interface InteractionTab {
 export interface InteractionsState {
   tabs: InteractionTab[];
   activeTabId: string | null;
+  closeRequestedTabId: string | null;
 }

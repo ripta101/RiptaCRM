@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   CreateCustomerInput,
   CustomerDetail,
@@ -10,19 +10,27 @@ import { SearchForm } from "./components/SearchForm";
 import { CreateCustomerForm } from "./components/CreateCustomerForm";
 import { MasterDetailView } from "./components/MasterDetailView";
 import { InteractionWorkspace } from "./components/InteractionWorkspace";
+import { WrapUpScreen } from "./components/WrapUpScreen";
 import type { CustomerMenuItem } from "./components/CustomerMenuBox";
 
 type View =
   | { mode: "search" }
   | { mode: "create" }
   | { mode: "browse"; results: CustomerSummary[] }
-  | { mode: "workspace" };
+  | { mode: "workspace" }
+  | { mode: "wrapup" };
 
 export interface CustomerLookupModuleProps {
   onCustomerIdentified?: (customer: CustomerSummary) => void;
+  closeRequested?: boolean;
+  onInteractionEnded?: () => void;
 }
 
-export default function CustomerLookupModule({ onCustomerIdentified }: CustomerLookupModuleProps) {
+export default function CustomerLookupModule({
+  onCustomerIdentified,
+  closeRequested,
+  onInteractionEnded,
+}: CustomerLookupModuleProps) {
   const [searchParams, setSearchParams] = useState<CustomerSearchParams>({});
   const [view, setView] = useState<View>({ mode: "search" });
   const [searching, setSearching] = useState(false);
@@ -40,6 +48,12 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
   const [confirmedCustomers, setConfirmedCustomers] = useState<CustomerDetail[]>([]);
   const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
   const [activeMenuItem, setActiveMenuItem] = useState<CustomerMenuItem>("profile");
+
+  useEffect(() => {
+    if (closeRequested) {
+      setView({ mode: "wrapup" });
+    }
+  }, [closeRequested]);
 
   function handleFieldChange(field: keyof CustomerSearchParams, value: string) {
     setSearchParams((prev) => ({ ...prev, [field]: value }));
@@ -138,6 +152,12 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
     if (customer) onCustomerIdentified?.(customer);
   }
 
+  function handleEndInteraction(notes: string) {
+    // Simulated save — no backend for interaction records yet.
+    console.log("Interaction wrapped up", { confirmedCustomers, notes });
+    onInteractionEnded?.();
+  }
+
   if (view.mode === "search") {
     return (
       <SearchForm
@@ -172,7 +192,14 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
         activeMenuItem={activeMenuItem}
         onSelectCustomerMenu={handleSelectCustomerMenu}
         onCustomerAdded={addOrActivateCustomer}
+        onWrapUp={() => setView({ mode: "wrapup" })}
       />
+    );
+  }
+
+  if (view.mode === "wrapup") {
+    return (
+      <WrapUpScreen confirmedCustomers={confirmedCustomers} onEndInteraction={handleEndInteraction} />
     );
   }
 
