@@ -18,7 +18,7 @@ function AppShellContent() {
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0, width: "100%" }}>
         <Toolbar />
         <TabBar />
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
           {/* Outlet is only conditionally shown, but InteractionsRegion always
               stays mounted so switching to a routed page via the menu
               never unmounts (and resets) an open interaction's state. */}

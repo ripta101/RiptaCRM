@@ -29,7 +29,14 @@ export function MasterDetailView({
           New Search
         </Button>
       </Box>
-      <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          gap: 2,
+          alignItems: { xs: "stretch", md: "flex-start" },
+        }}
+      >
         <ResultsList
           results={results}
           selectedCustomerId={selectedCustomerId}

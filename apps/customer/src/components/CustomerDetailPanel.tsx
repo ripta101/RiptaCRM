@@ -63,7 +63,7 @@ export function CustomerDetailPanel({ detail, loading, error }: CustomerDetailPa
       </Typography>
 
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
           <Typography color="text.secondary">Phone: {detail.phone}</Typography>
           <Typography color="text.secondary">DOB: {formatDate(detail.dateOfBirth)}</Typography>
           <Typography color="text.secondary">Email: {detail.email ?? "—"}</Typography>

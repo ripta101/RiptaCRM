@@ -18,7 +18,16 @@ export function DashboardPage() {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 3,
+        }}
+      >
         <Typography variant="h4" component="h1">
           Dashboard
         </Typography>

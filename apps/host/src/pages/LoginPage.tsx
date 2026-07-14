@@ -37,9 +37,10 @@ export function LoginPage() {
         alignItems: "center",
         justifyContent: "center",
         bgcolor: "background.default",
+        px: 2,
       }}
     >
-      <Paper elevation={3} sx={{ p: 4, width: 360 }}>
+      <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 }, width: "100%", maxWidth: 360 }}>
         <Typography variant="h5" component="h1" gutterBottom>
           RiptaCRM
         </Typography>

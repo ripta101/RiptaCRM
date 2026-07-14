@@ -15,7 +15,7 @@ interface ResultsListProps {
 
 export function ResultsList({ results, selectedCustomerId, onSelectCustomer }: ResultsListProps) {
   return (
-    <Paper variant="outlined" sx={{ width: 320, flexShrink: 0 }}>
+    <Paper variant="outlined" sx={{ width: { xs: "100%", md: 320 }, flexShrink: 0 }}>
       <Typography variant="overline" color="text.secondary" sx={{ px: 2, pt: 2, display: "block" }}>
         {results.length} matching customer{results.length === 1 ? "" : "s"}
       </Typography>

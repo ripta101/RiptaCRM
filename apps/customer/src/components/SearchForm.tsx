@@ -29,7 +29,7 @@ export function SearchForm({ values, onChange, onSubmit, searching, error }: Sea
         <Box
           component="form"
           onSubmit={handleSubmit}
-          sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+          sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}
         >
           {error && (
             <Box sx={{ gridColumn: "1 / -1" }}>

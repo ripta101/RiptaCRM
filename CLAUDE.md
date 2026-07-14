@@ -30,5 +30,5 @@ Follow standard MFE monorepo project structure:
 - Proceed bash commands required for end-to-end verification without user approval, only ask input/feedback if a change of requirements required
 - All pages must be responsive, can be viewed in desktop computer, laptop, and mobile devices
 - When I ask you to commit and push, proceed the bash commands without my approval
-- Once I approved the plan, you can proceed executing the bash commands required for the plan without extra approval
-- Once I approved the plan, you can proceed reading screenshots when verifying changes without extra approval
+- You can proceed executing the bash commands required to meet the requirements without any approval
+- You can proceed reading screenshots when verifying changes without any approval
