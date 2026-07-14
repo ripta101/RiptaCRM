@@ -1,33 +1,29 @@
-import { useState } from "react";
-import { Box, Paper, TextField, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import type { InteractionTab } from "@riptacrm/shared-types";
+import { useInteractions } from "./InteractionsContext";
+import { CustomerLookupRemote } from "./CustomerLookupRemote";
 
 interface InteractionPanelProps {
   tab: InteractionTab;
 }
 
 export function InteractionPanel({ tab }: InteractionPanelProps) {
-  const [notes, setNotes] = useState("");
+  const { renameTab } = useInteractions();
 
-  return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {tab.title}
-      </Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Mock interaction ({tab.kind}) — opened {new Date(tab.openedAt).toLocaleTimeString()}
-      </Typography>
-      <Paper variant="outlined" sx={{ p: 2, maxWidth: 480 }}>
-        <TextField
-          label="Notes"
-          placeholder="Type here — switch tabs and come back, this stays put"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          multiline
-          minRows={4}
-          fullWidth
+  switch (tab.kind) {
+    case "customer-lookup":
+      return (
+        <CustomerLookupRemote
+          onCustomerIdentified={(customer) =>
+            renameTab(tab.id, `${customer.firstName} ${customer.lastName}`)
+          }
         />
-      </Paper>
-    </Box>
-  );
+      );
+    default:
+      return (
+        <Box>
+          <Typography color="text.secondary">Unknown interaction kind: {tab.kind}</Typography>
+        </Box>
+      );
+  }
 }

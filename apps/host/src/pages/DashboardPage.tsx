@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useInteractions } from "../interactions/InteractionsContext";
@@ -7,14 +6,12 @@ import { RecentActivityWidget } from "../shell/widgets/RecentActivityWidget";
 
 export function DashboardPage() {
   const { openInteraction } = useInteractions();
-  const counterRef = useRef(1);
 
-  function handleNewMockInteraction() {
-    const n = counterRef.current++;
+  function handleNewInteraction() {
     openInteraction({
       id: crypto.randomUUID(),
-      title: `Customer ${n}`,
-      kind: "mock-customer",
+      title: "New Customer Search",
+      kind: "customer-lookup",
       openedAt: Date.now(),
     });
   }
@@ -25,8 +22,8 @@ export function DashboardPage() {
         <Typography variant="h4" component="h1">
           Dashboard
         </Typography>
-        <Button variant="contained" onClick={handleNewMockInteraction}>
-          New Mock Interaction
+        <Button variant="contained" onClick={handleNewInteraction}>
+          New Interaction
         </Button>
       </Box>
       <Grid container spacing={2}>

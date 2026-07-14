@@ -11,7 +11,8 @@ import type { InteractionsState, InteractionTab } from "@riptacrm/shared-types";
 type Action =
   | { type: "OPEN_TAB"; tab: InteractionTab }
   | { type: "CLOSE_TAB"; id: string }
-  | { type: "SET_ACTIVE_TAB"; id: string | null };
+  | { type: "SET_ACTIVE_TAB"; id: string | null }
+  | { type: "RENAME_TAB"; id: string; title: string };
 
 const initialState: InteractionsState = { tabs: [], activeTabId: null };
 
@@ -39,6 +40,11 @@ function reducer(state: InteractionsState, action: Action): InteractionsState {
     }
     case "SET_ACTIVE_TAB":
       return { ...state, activeTabId: action.id };
+    case "RENAME_TAB":
+      return {
+        ...state,
+        tabs: state.tabs.map((tab) => (tab.id === action.id ? { ...tab, title: action.title } : tab)),
+      };
     default:
       return state;
   }
@@ -48,6 +54,7 @@ interface InteractionsContextValue extends InteractionsState {
   openInteraction: (tab: InteractionTab) => void;
   closeInteraction: (id: string) => void;
   setActiveTab: (id: string | null) => void;
+  renameTab: (id: string, title: string) => void;
 }
 
 const InteractionsContext = createContext<InteractionsContextValue | undefined>(undefined);
@@ -67,9 +74,13 @@ export function InteractionsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "SET_ACTIVE_TAB", id });
   }, []);
 
+  const renameTab = useCallback((id: string, title: string) => {
+    dispatch({ type: "RENAME_TAB", id, title });
+  }, []);
+
   const value = useMemo<InteractionsContextValue>(
-    () => ({ ...state, openInteraction, closeInteraction, setActiveTab }),
-    [state, openInteraction, closeInteraction, setActiveTab],
+    () => ({ ...state, openInteraction, closeInteraction, setActiveTab, renameTab }),
+    [state, openInteraction, closeInteraction, setActiveTab, renameTab],
   );
 
   return <InteractionsContext.Provider value={value}>{children}</InteractionsContext.Provider>;
