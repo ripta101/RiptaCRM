@@ -4,13 +4,20 @@ import { Drawer, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/m
 import HomeIcon from "@mui/icons-material/Home";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import ChatIcon from "@mui/icons-material/Chat";
+import EmailIcon from "@mui/icons-material/Email";
+import WorkIcon from "@mui/icons-material/Work";
+import { useAuth } from "@riptacrm/auth-client";
 import { useInteractions } from "../interactions/InteractionsContext";
-import { navItems } from "./navItems";
+import { adminNavItems, frontlineNavItems } from "./navItems";
 
 const ICONS: Record<string, ComponentType> = {
   home: HomeIcon,
   worklist: AssignmentIcon,
   "it-support": SupportAgentIcon,
+  webchat: ChatIcon,
+  email: EmailIcon,
+  "case-management": WorkIcon,
 };
 
 export const SIDE_MENU_WIDTH = 240;
@@ -23,6 +30,8 @@ interface SideMenuProps {
 export function SideMenu({ open, onClose }: SideMenuProps) {
   const navigate = useNavigate();
   const { setActiveTab } = useInteractions();
+  const { user } = useAuth();
+  const navItems = user?.role === "admin" ? adminNavItems : frontlineNavItems;
 
   function handleSelect(path: string) {
     setActiveTab(null);

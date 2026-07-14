@@ -5,12 +5,13 @@ A modular CRM application built as independent React micro-frontend (MFE) module
 ## Modules
 
 ### Host (Shell)
-The application frame everything else runs inside.
+The application frame everything else runs inside. Two roles, two different experiences:
 - Login screen
-- Top bar with a hamburger menu (Home, Worklist, IT Support) and a profile menu (Profile, Settings, Logout)
-- Dashboard with summary widgets
-- Persistent tabs for open customer interactions — switching tabs doesn't lose your place
-- `Worklist`, `IT Support`, `Settings`, and `Profile` pages are placeholder "coming soon" screens for now
+- Top bar with a hamburger menu and a profile menu (Profile, Settings, Logout)
+- **Frontline users** get a Dashboard with case widgets and a way to start customer interactions (persistent tabs — switching tabs doesn't lose your place), plus a Worklist and IT Support menu
+- **Business admins** get a Dashboard showing recent configuration changes instead, cannot start interactions, and get a WebChat / Email / Case Management configuration menu instead
+- Routes are guarded by role — each menu's pages are only reachable by the role they belong to
+- `Worklist`, `IT Support`, `Settings`, `Profile`, and the three configuration pages are placeholder "coming soon" screens for now
 
 ### Customer
 Find a customer and see their history. Opens inside a new interaction tab (not a standalone menu item).
@@ -53,7 +54,9 @@ This starts all three services together:
 - Customer module — http://localhost:5174
 - Customer API — http://localhost:4310
 
-Open http://localhost:5173 and log in with `test` / `test`.
+Open http://localhost:5173 and log in with one of:
+- `test` / `test` — frontline user
+- `admin` / `admin` — business admin
 
 ## Changing the Database Schema
 

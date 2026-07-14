@@ -1,10 +1,13 @@
 import { Box, Button, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
+import { useAuth } from "@riptacrm/auth-client";
 import { useInteractions } from "../interactions/InteractionsContext";
 import { OpenCasesWidget } from "../shell/widgets/OpenCasesWidget";
 import { RecentActivityWidget } from "../shell/widgets/RecentActivityWidget";
+import { RecentConfigChangesWidget } from "../shell/widgets/RecentConfigChangesWidget";
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const { openInteraction } = useInteractions();
 
   function handleNewInteraction() {
@@ -14,6 +17,21 @@ export function DashboardPage() {
       kind: "customer-lookup",
       openedAt: Date.now(),
     });
+  }
+
+  if (user?.role === "admin") {
+    return (
+      <Box>
+        <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
+          Dashboard
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 8 }}>
+            <RecentConfigChangesWidget />
+          </Grid>
+        </Grid>
+      </Box>
+    );
   }
 
   return (

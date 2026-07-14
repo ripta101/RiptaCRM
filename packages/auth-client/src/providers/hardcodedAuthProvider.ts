@@ -2,20 +2,36 @@ import type { AuthProvider, AuthSession } from "../types";
 
 const STORAGE_KEY = "riptacrm.auth.session";
 
-const MOCK_USER: AuthSession = {
-  id: "user-1",
-  name: "Test User",
-  email: "test@riptacrm.example",
+const CREDENTIALS: Record<string, { password: string; session: AuthSession }> = {
+  test: {
+    password: "test",
+    session: {
+      id: "user-1",
+      name: "Test User",
+      email: "test@riptacrm.example",
+      role: "frontline",
+    },
+  },
+  admin: {
+    password: "admin",
+    session: {
+      id: "user-2",
+      name: "Admin User",
+      email: "admin@riptacrm.example",
+      role: "admin",
+    },
+  },
 };
 
 export function createHardcodedAuthProvider(): AuthProvider {
   return {
     async login(username, password) {
-      if (username !== "test" || password !== "test") {
+      const entry = CREDENTIALS[username];
+      if (!entry || entry.password !== password) {
         throw new Error("Invalid username or password");
       }
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_USER));
-      return MOCK_USER;
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(entry.session));
+      return entry.session;
     },
 
     logout() {
