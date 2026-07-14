@@ -16,6 +16,7 @@ The application frame everything else runs inside.
 Find a customer and see their history. Opens inside a new interaction tab (not a standalone menu item).
 - Search by first name, last name, phone number, date of birth, email, account ID, or company
 - View a customer's full profile: open cases and recent interactions
+- If a search finds no one, create a new customer on the spot — the form pre-fills from your search, and the account ID is generated automatically
 
 `packages/` holds code shared across modules (UI theme, shared types, auth) — not a module in its own right.
 

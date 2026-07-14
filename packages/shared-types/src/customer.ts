@@ -48,3 +48,13 @@ export interface CustomerDetail extends CustomerSummary {
 export interface CustomerSearchResponse {
   results: CustomerSummary[];
 }
+
+export interface CreateCustomerInput {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  /** ISO date string, e.g. "1990-05-05". */
+  dateOfBirth: string;
+  email?: string;
+  companyName?: string;
+}

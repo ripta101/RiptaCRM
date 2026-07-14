@@ -1,10 +1,33 @@
 import { Router } from "express";
-import type { Prisma } from "@prisma/client";
-import type { CustomerSearchResponse } from "@riptacrm/shared-types";
+import { Prisma } from "@prisma/client";
+import type { CreateCustomerInput, CustomerSearchResponse } from "@riptacrm/shared-types";
 import { prisma } from "../db";
 import { toCustomerDetail, toCustomerSummary } from "../lib/mappers";
 
 export const customersRouter = Router();
+
+const REQUIRED_CREATE_FIELDS = ["firstName", "lastName", "phone", "dateOfBirth"] as const;
+
+async function generateNextAccountId(): Promise<string> {
+  const existing = await prisma.customer.findMany({
+    where: { accountId: { startsWith: "ACC-" } },
+    select: { accountId: true },
+  });
+
+  let maxNumber = 1000;
+  for (const { accountId } of existing) {
+    const match = accountId.match(/^ACC-(\d+)$/);
+    if (match) {
+      maxNumber = Math.max(maxNumber, parseInt(match[1], 10));
+    }
+  }
+
+  return `ACC-${maxNumber + 1}`;
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}
 
 const CONTAINS_FIELDS = [
   "firstName",
@@ -67,4 +90,38 @@ customersRouter.get("/:id", async (req, res) => {
   }
 
   res.json(toCustomerDetail(customer));
+});
+
+customersRouter.post("/", async (req, res) => {
+  const body = req.body as Partial<CreateCustomerInput>;
+
+  const missing = REQUIRED_CREATE_FIELDS.filter((field) => !body[field]?.toString().trim());
+  if (missing.length > 0) {
+    return res.status(400).json({ error: `Missing required field(s): ${missing.join(", ")}` });
+  }
+
+  const dateOfBirth = new Date(`${body.dateOfBirth}T00:00:00.000Z`);
+  if (Number.isNaN(dateOfBirth.getTime())) {
+    return res.status(400).json({ error: "Invalid dateOfBirth. Expected YYYY-MM-DD." });
+  }
+
+  const data = {
+    firstName: body.firstName!.trim(),
+    lastName: body.lastName!.trim(),
+    phone: body.phone!.trim(),
+    dateOfBirth,
+    email: body.email?.trim() || null,
+    companyName: body.companyName?.trim() || null,
+  };
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const accountId = await generateNextAccountId();
+    try {
+      const customer = await prisma.customer.create({ data: { ...data, accountId } });
+      return res.status(201).json(toCustomerDetail({ ...customer, cases: [], interactions: [] }));
+    } catch (err) {
+      if (isUniqueConstraintError(err) && attempt < 2) continue;
+      throw err;
+    }
+  }
 });

@@ -1,4 +1,5 @@
 import type {
+  CreateCustomerInput,
   CustomerDetail,
   CustomerSearchParams,
   CustomerSearchResponse,
@@ -27,6 +28,19 @@ export async function getCustomerById(id: string): Promise<CustomerDetail> {
   const res = await fetch(`${BASE_URL}/api/customers/${id}`);
   if (!res.ok) {
     throw new Error(`Failed to load customer (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createCustomer(input: CreateCustomerInput): Promise<CustomerDetail> {
+  const res = await fetch(`${BASE_URL}/api/customers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? `Failed to create customer (${res.status})`);
   }
   return res.json();
 }

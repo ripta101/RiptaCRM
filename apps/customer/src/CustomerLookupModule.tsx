@@ -1,10 +1,19 @@
 import { useState } from "react";
-import type { CustomerDetail, CustomerSearchParams, CustomerSummary } from "@riptacrm/shared-types";
-import { getCustomerById, searchCustomers } from "./api/client";
+import type {
+  CreateCustomerInput,
+  CustomerDetail,
+  CustomerSearchParams,
+  CustomerSummary,
+} from "@riptacrm/shared-types";
+import { createCustomer, getCustomerById, searchCustomers } from "./api/client";
 import { SearchForm } from "./components/SearchForm";
+import { CreateCustomerForm } from "./components/CreateCustomerForm";
 import { MasterDetailView } from "./components/MasterDetailView";
 
-type View = { mode: "search" } | { mode: "browse"; results: CustomerSummary[] };
+type View =
+  | { mode: "search" }
+  | { mode: "create" }
+  | { mode: "browse"; results: CustomerSummary[] };
 
 export interface CustomerLookupModuleProps {
   onCustomerIdentified?: (customer: CustomerSummary) => void;
@@ -15,6 +24,10 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
   const [view, setView] = useState<View>({ mode: "search" });
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  const [createParams, setCreateParams] = useState<Partial<CreateCustomerInput>>({});
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
@@ -67,14 +80,62 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
     setDetailError(null);
   }
 
+  function handleShowCreateForm() {
+    setCreateParams({
+      firstName: searchParams.firstName,
+      lastName: searchParams.lastName,
+      phone: searchParams.phone,
+      dateOfBirth: searchParams.dateOfBirth,
+      email: searchParams.email,
+      companyName: searchParams.companyName,
+    });
+    setCreateError(null);
+    setView({ mode: "create" });
+  }
+
+  function handleCreateFieldChange(field: keyof CreateCustomerInput, value: string) {
+    setCreateParams((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleCreateCustomer() {
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const newCustomer = await createCustomer(createParams as CreateCustomerInput);
+      setView({ mode: "browse", results: [newCustomer] });
+      setSelectedCustomerId(newCustomer.id);
+      setDetail(newCustomer);
+      setDetailError(null);
+      onCustomerIdentified?.(newCustomer);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to create customer.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   if (view.mode === "search") {
     return (
       <SearchForm
         values={searchParams}
         onChange={handleFieldChange}
         onSubmit={handleSearch}
+        onCreateCustomer={handleShowCreateForm}
         searching={searching}
         error={searchError}
+      />
+    );
+  }
+
+  if (view.mode === "create") {
+    return (
+      <CreateCustomerForm
+        values={createParams}
+        onChange={handleCreateFieldChange}
+        onSubmit={handleCreateCustomer}
+        onBack={() => setView({ mode: "search" })}
+        submitting={creating}
+        error={createError}
       />
     );
   }

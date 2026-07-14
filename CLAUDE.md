@@ -17,6 +17,11 @@ I am a technical engineer. My customer will be small to medium business company,
 - Database changes and sample data must have versioning
 - Review and update README.md everytime you add/modify/remove modules and features
 - All pages must be responsive, can be viewed in desktop computer, laptop, and mobile devices
+- Always verify end-to-end in the running app before calling something done
+- Never commit/push without an explicit, standalone request
+- Favor mature, established tools over custom-built solutions
+- If verification finds a bug, fix it in the same task and call it out explicitly
+- When creating a test data as part of verification, make sure to delete the test data you created after the verification
 
 # Project Structure
 
