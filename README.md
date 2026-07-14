@@ -7,11 +7,10 @@ A modular CRM application built as independent React micro-frontend (MFE) module
 ### Host (Shell)
 The application frame everything else runs inside.
 - Login screen
-- Top bar with profile menu (Profile, Settings, Logout)
-- Left-hand navigation
+- Top bar with a hamburger menu (Home, Worklist, IT Support) and a profile menu (Profile, Settings, Logout)
 - Dashboard with summary widgets
 - Persistent tabs for open customer interactions — switching tabs doesn't lose your place
-- `Customers`, `Settings`, and `Profile` pages are placeholder "coming soon" screens for now
+- `Worklist`, `IT Support`, `Settings`, and `Profile` pages are placeholder "coming soon" screens for now
 
 ### Customer
 Find a customer and see their history. Opens inside a new interaction tab (not a standalone menu item).

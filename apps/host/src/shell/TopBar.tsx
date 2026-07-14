@@ -1,11 +1,16 @@
 import { useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppBar, Avatar, Divider, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 import { useAuth } from "@riptacrm/auth-client";
 
 export const TOP_BAR_HEIGHT = 64;
 
-export function TopBar() {
+interface TopBarProps {
+  onMenuClick: () => void;
+}
+
+export function TopBar({ onMenuClick }: TopBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -29,8 +34,18 @@ export function TopBar() {
   }
 
   return (
-    <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+    <AppBar position="fixed">
       <Toolbar sx={{ height: TOP_BAR_HEIGHT }}>
+        <IconButton
+          onClick={onMenuClick}
+          size="small"
+          aria-label="open menu"
+          edge="start"
+          sx={{ mr: 2 }}
+          color="inherit"
+        >
+          <MenuIcon />
+        </IconButton>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           RiptaCRM
         </Typography>

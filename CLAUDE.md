@@ -23,3 +23,9 @@ Follow standard MFE monorepo project structure:
 - package.json - Workspace dependencies
 - turbo.json / nx.json - Monorepo task orchestration
 - tsconfig.json - Global typescript config
+
+# Additional Instructions
+
+- Review and update README.md everytime you add/modify/remove modules and features
+- Proceed bash commands required for end-to-end verification without user approval, only ask input/feedback if a change of requirements required
+- All pages must be responsive, can be viewed in desktop computer, laptop, and mobile devices
