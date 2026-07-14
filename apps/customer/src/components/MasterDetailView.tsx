@@ -11,6 +11,7 @@ interface MasterDetailViewProps {
   detailLoading: boolean;
   detailError: string | null;
   onNewSearch: () => void;
+  onConfirm?: (detail: CustomerDetail) => void;
 }
 
 export function MasterDetailView({
@@ -21,6 +22,7 @@ export function MasterDetailView({
   detailLoading,
   detailError,
   onNewSearch,
+  onConfirm,
 }: MasterDetailViewProps) {
   return (
     <Box>
@@ -42,7 +44,16 @@ export function MasterDetailView({
           selectedCustomerId={selectedCustomerId}
           onSelectCustomer={onSelectCustomer}
         />
-        <CustomerDetailPanel detail={detail} loading={detailLoading} error={detailError} />
+        <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <CustomerDetailPanel detail={detail} loading={detailLoading} error={detailError} />
+          {detail && (
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button variant="contained" onClick={() => onConfirm?.(detail)}>
+                Confirm
+              </Button>
+            </Box>
+          )}
+        </Box>
       </Box>
     </Box>
   );

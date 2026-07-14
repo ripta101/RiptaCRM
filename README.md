@@ -17,6 +17,7 @@ Find a customer and see their history. Opens inside a new interaction tab (not a
 - Search by first name, last name, phone number, date of birth, email, account ID, or company
 - View a customer's full profile: open cases and recent interactions
 - If a search finds no one, create a new customer on the spot — the form pre-fills from your search, and the account ID is generated automatically
+- Confirm a customer to open the interaction workspace: a box per confirmed customer (Customer Profile, Amend Customer, Lodge a Complaint) plus a generic box to search and confirm additional customers into the same interaction
 
 `packages/` holds code shared across modules (UI theme, shared types, auth) — not a module in its own right.
 

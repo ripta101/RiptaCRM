@@ -9,11 +9,14 @@ import { createCustomer, getCustomerById, searchCustomers } from "./api/client";
 import { SearchForm } from "./components/SearchForm";
 import { CreateCustomerForm } from "./components/CreateCustomerForm";
 import { MasterDetailView } from "./components/MasterDetailView";
+import { InteractionWorkspace } from "./components/InteractionWorkspace";
+import type { CustomerMenuItem } from "./components/CustomerMenuBox";
 
 type View =
   | { mode: "search" }
   | { mode: "create" }
-  | { mode: "browse"; results: CustomerSummary[] };
+  | { mode: "browse"; results: CustomerSummary[] }
+  | { mode: "workspace" };
 
 export interface CustomerLookupModuleProps {
   onCustomerIdentified?: (customer: CustomerSummary) => void;
@@ -33,6 +36,10 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  const [confirmedCustomers, setConfirmedCustomers] = useState<CustomerDetail[]>([]);
+  const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
+  const [activeMenuItem, setActiveMenuItem] = useState<CustomerMenuItem>("profile");
 
   function handleFieldChange(field: keyof CustomerSearchParams, value: string) {
     setSearchParams((prev) => ({ ...prev, [field]: value }));
@@ -114,6 +121,23 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
     }
   }
 
+  function addOrActivateCustomer(customer: CustomerDetail) {
+    setConfirmedCustomers((prev) =>
+      prev.some((c) => c.id === customer.id) ? prev : [...prev, customer],
+    );
+    setActiveCustomerId(customer.id);
+    setActiveMenuItem("profile");
+    setView({ mode: "workspace" });
+    onCustomerIdentified?.(customer);
+  }
+
+  function handleSelectCustomerMenu(customerId: string, item: CustomerMenuItem) {
+    setActiveCustomerId(customerId);
+    setActiveMenuItem(item);
+    const customer = confirmedCustomers.find((c) => c.id === customerId);
+    if (customer) onCustomerIdentified?.(customer);
+  }
+
   if (view.mode === "search") {
     return (
       <SearchForm
@@ -140,6 +164,18 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
     );
   }
 
+  if (view.mode === "workspace") {
+    return (
+      <InteractionWorkspace
+        confirmedCustomers={confirmedCustomers}
+        activeCustomerId={activeCustomerId}
+        activeMenuItem={activeMenuItem}
+        onSelectCustomerMenu={handleSelectCustomerMenu}
+        onCustomerAdded={addOrActivateCustomer}
+      />
+    );
+  }
+
   return (
     <MasterDetailView
       results={view.results}
@@ -149,6 +185,7 @@ export default function CustomerLookupModule({ onCustomerIdentified }: CustomerL
       detailLoading={detailLoading}
       detailError={detailError}
       onNewSearch={handleNewSearch}
+      onConfirm={addOrActivateCustomer}
     />
   );
 }
