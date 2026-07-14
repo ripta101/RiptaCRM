@@ -14,6 +14,9 @@ I am a technical engineer. My customer will be small to medium business company,
 - Keep reports and summarise concise - bullet points over paragraphs
 - The modules created must make sense as an epic level module that makes sense to business function e.g. Email, WebChat, Case Management - do not go crazy generating every single function as a module
 - The modules must have its own MFE folder, and can be modified/deployed independently
+- Database changes and sample data must have versioning
+- Review and update README.md everytime you add/modify/remove modules and features
+- All pages must be responsive, can be viewed in desktop computer, laptop, and mobile devices
 
 # Project Structure
 
@@ -26,9 +29,7 @@ Follow standard MFE monorepo project structure:
 
 # Additional Instructions
 
-- Review and update README.md everytime you add/modify/remove modules and features
 - Proceed bash commands required for end-to-end verification without user approval, only ask input/feedback if a change of requirements required
-- All pages must be responsive, can be viewed in desktop computer, laptop, and mobile devices
 - When I ask you to commit and push, proceed the bash commands without my approval
 - You can proceed executing the bash commands required to meet the requirements without any approval
 - You can proceed reading screenshots when verifying changes without any approval

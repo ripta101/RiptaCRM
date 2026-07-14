@@ -36,9 +36,9 @@ Find a customer and see their history. Opens inside a new interaction tab (not a
 3. Set up the Customer module's database:
    ```
    cp apps/customer-api/.env.example apps/customer-api/.env
-   pnpm --filter @riptacrm/customer-api db:push
-   pnpm --filter @riptacrm/customer-api db:seed
+   pnpm --filter @riptacrm/customer-api db:migrate
    ```
+   This applies all versioned migrations and seeds the sample data in one step.
 
 ## Starting the Application
 
@@ -52,6 +52,21 @@ This starts all three services together:
 - Customer API — http://localhost:4310
 
 Open http://localhost:5173 and log in with `test` / `test`.
+
+## Changing the Database Schema
+
+The Customer module's database uses [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in `apps/customer-api/prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command, on any machine:
+
+- **You pulled code that includes new migrations** (someone else changed the schema): run
+  ```
+  pnpm --filter @riptacrm/customer-api db:migrate
+  ```
+  This applies only the migrations your local database doesn't have yet.
+- **You're changing the schema yourself**: edit `apps/customer-api/prisma/schema.prisma`, then run the same `db:migrate` command. Prisma detects the change, generates a new migration file, and applies it locally. Commit the new `prisma/migrations/<timestamp>_<name>/` folder along with your code change so everyone else picks it up next time they run `db:migrate`.
+- **CI or any future non-local environment**: use `pnpm --filter @riptacrm/customer-api db:deploy` instead — applies pending migrations only, never prompts, never generates new ones.
+- **Start completely clean**: `pnpm --filter @riptacrm/customer-api db:reset` — drops the local database, replays every migration from scratch, and reseeds the sample data.
+
+`db:push` (schema sync with no migration file) still exists for quick, throwaway local experiments, but any change you intend to commit should go through `db:migrate` instead.
 
 ## Stopping the Application
 
