@@ -18,6 +18,13 @@ export default defineConfig({
           entryGlobalName: "customer",
           shareScope: "default",
         },
+        caseManagement: {
+          type: "module",
+          name: "caseManagement",
+          entry: "http://localhost:5175/remoteEntry.js",
+          entryGlobalName: "caseManagement",
+          shareScope: "default",
+        },
       },
       shared: {
         react: { singleton: true, requiredVersion: false },

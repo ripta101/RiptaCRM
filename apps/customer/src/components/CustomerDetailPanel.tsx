@@ -25,12 +25,6 @@ function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString();
 }
 
-const CASE_STATUS_COLOR: Record<string, "success" | "warning" | "default"> = {
-  open: "warning",
-  pending: "warning",
-  closed: "success",
-};
-
 export function CustomerDetailPanel({ detail, loading, error }: CustomerDetailPanelProps) {
   if (loading) {
     return (
@@ -89,11 +83,12 @@ export function CustomerDetailPanel({ detail, loading, error }: CustomerDetailPa
                   <ListItemText
                     primary={
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {c.subject}
-                        <Chip size="small" label={c.status} color={CASE_STATUS_COLOR[c.status] ?? "default"} />
+                        {c.caseTypeName}
+                        <Chip size="small" label={c.currentStageName} color={c.breached ? "warning" : "default"} />
+                        {c.breached && <Chip size="small" label="SLA breached" color="error" />}
                       </Box>
                     }
-                    secondary={`Opened ${formatDate(c.openedAt)}${c.priority ? ` · ${c.priority} priority` : ""}`}
+                    secondary={`Opened ${formatDate(c.createdAt)} · SLA due ${formatDateTime(c.slaDueAt)}`}
                   />
                 </ListItem>
               </Box>

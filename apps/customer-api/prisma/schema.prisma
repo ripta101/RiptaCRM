@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 model Customer {
@@ -19,18 +20,7 @@ model Customer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  cases        Case[]
   interactions InteractionHistory[]
-}
-
-model Case {
-  id         String   @id @default(uuid())
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
-  subject    String
-  status     String
-  priority   String?
-  openedAt   DateTime @default(now())
 }
 
 model InteractionHistory {

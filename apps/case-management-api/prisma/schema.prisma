@@ -1,0 +1,155 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+model CaseType {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  versions  CaseTypeVersion[]
+  instances CaseInstance[]
+}
+
+model CaseTypeVersion {
+  id            String    @id @default(uuid())
+  caseTypeId    String
+  caseType      CaseType  @relation(fields: [caseTypeId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  status        String // "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  publishedAt   DateTime?
+
+  fields    FieldDefinition[]
+  stages    StageDefinition[]
+  instances CaseInstance[]
+
+  @@unique([caseTypeId, versionNumber])
+}
+
+model FieldDefinition {
+  id                String          @id @default(uuid())
+  caseTypeVersionId String
+  caseTypeVersion   CaseTypeVersion @relation(fields: [caseTypeVersionId], references: [id], onDelete: Cascade)
+  fieldKey          String
+  name              String
+  fieldType         String // "TEXT" | "NUMBER" | "DATE" | "SELECT" | "TEXTAREA" | "CHECKBOX"
+  required          Boolean         @default(false)
+  optionsJson       String? // JSON string[] — SELECT only
+  displayOrder      Int
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  values CaseFieldValue[]
+
+  @@unique([caseTypeVersionId, fieldKey])
+}
+
+model StageDefinition {
+  id                String          @id @default(uuid())
+  caseTypeVersionId String
+  caseTypeVersion   CaseTypeVersion @relation(fields: [caseTypeVersionId], references: [id], onDelete: Cascade)
+  key               String
+  name              String
+  slaMinutes        Int
+  isTerminal        Boolean         @default(false)
+  displayOrder      Int
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  actions    ActionDefinition[]
+  history    CaseStageHistory[]
+  currentFor CaseInstance[]     @relation("CurrentStage")
+
+  @@unique([caseTypeVersionId, key])
+}
+
+model ActionDefinition {
+  id            String   @id @default(uuid())
+  stageId       String
+  stage         StageDefinition @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  trigger       String // "BEFORE_BREACH" | "AT_BREACH" | "AFTER_BREACH"
+  offsetMinutes Int      @default(0)
+  actionType    String   @default("EMAIL")
+  configJson    String // { subjectTemplate, bodyTemplate, recipientMode, recipientValue? }
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  logEntries ActionLogEntry[]
+}
+
+model CaseInstance {
+  id                String          @id @default(uuid())
+  caseTypeId        String
+  caseType          CaseType        @relation(fields: [caseTypeId], references: [id])
+  caseTypeVersionId String
+  caseTypeVersion   CaseTypeVersion @relation(fields: [caseTypeVersionId], references: [id])
+  currentStageId    String
+  currentStage      StageDefinition @relation("CurrentStage", fields: [currentStageId], references: [id])
+  customerAccountId String?
+  assignedToUserId  String?
+  contactEmail      String?
+  status            String          @default("OPEN") // "OPEN" | "CLOSED"
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  closedAt          DateTime?
+
+  fieldValues  CaseFieldValue[]
+  stageHistory CaseStageHistory[]
+}
+
+model CaseFieldValue {
+  id                String          @id @default(uuid())
+  caseInstanceId    String
+  caseInstance      CaseInstance    @relation(fields: [caseInstanceId], references: [id], onDelete: Cascade)
+  fieldDefinitionId String
+  fieldDefinition   FieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+  valueText         String?
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([caseInstanceId, fieldDefinitionId])
+}
+
+model CaseStageHistory {
+  id             String    @id @default(uuid())
+  caseInstanceId String
+  caseInstance   CaseInstance    @relation(fields: [caseInstanceId], references: [id], onDelete: Cascade)
+  stageId        String
+  stage          StageDefinition @relation(fields: [stageId], references: [id])
+  enteredAt      DateTime  @default(now())
+  slaDueAt       DateTime
+  exitedAt       DateTime?
+  breached       Boolean   @default(false)
+
+  actionLogEntries ActionLogEntry[]
+}
+
+model ActionLogEntry {
+  id                 String            @id @default(uuid())
+  caseInstanceId     String
+  stageHistoryId     String
+  stageHistory       CaseStageHistory  @relation(fields: [stageHistoryId], references: [id], onDelete: Cascade)
+  actionDefinitionId String?
+  actionDefinition   ActionDefinition? @relation(fields: [actionDefinitionId], references: [id], onDelete: SetNull)
+  trigger            String
+  actionType         String
+  recipient          String
+  subject            String
+  body               String
+  simulated          Boolean           @default(true)
+  firedAt            DateTime          @default(now())
+
+  @@unique([stageHistoryId, actionDefinitionId])
+}

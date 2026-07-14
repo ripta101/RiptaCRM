@@ -1,6 +1,6 @@
-import type { Case, Customer, InteractionHistory } from "@prisma/client";
+import type { Customer, InteractionHistory } from "../../generated/prisma";
 import type {
-  CaseSummary,
+  CaseInstanceSummary,
   CustomerDetail,
   CustomerSummary,
   InteractionHistoryEntry,
@@ -19,16 +19,6 @@ export function toCustomerSummary(customer: Customer): CustomerSummary {
   };
 }
 
-function toCaseSummary(c: Case): CaseSummary {
-  return {
-    id: c.id,
-    subject: c.subject,
-    status: c.status as CaseSummary["status"],
-    priority: (c.priority as CaseSummary["priority"]) ?? null,
-    openedAt: c.openedAt.toISOString(),
-  };
-}
-
 function toInteractionHistoryEntry(i: InteractionHistory): InteractionHistoryEntry {
   return {
     id: i.id,
@@ -39,11 +29,12 @@ function toInteractionHistoryEntry(i: InteractionHistory): InteractionHistoryEnt
 }
 
 export function toCustomerDetail(
-  customer: Customer & { cases: Case[]; interactions: InteractionHistory[] },
+  customer: Customer & { interactions: InteractionHistory[] },
+  cases: CaseInstanceSummary[],
 ): CustomerDetail {
   return {
     ...toCustomerSummary(customer),
-    cases: customer.cases.map(toCaseSummary),
+    cases,
     interactions: customer.interactions.map(toInteractionHistoryEntry),
   };
 }

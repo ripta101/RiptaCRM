@@ -1,10 +1,25 @@
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
-import type { CreateCustomerInput, CustomerSearchResponse } from "@riptacrm/shared-types";
+import { Prisma } from "../../generated/prisma";
+import type { CaseInstanceSummary, CreateCustomerInput, CustomerSearchResponse } from "@riptacrm/shared-types";
 import { prisma } from "../db";
 import { toCustomerDetail, toCustomerSummary } from "../lib/mappers";
 
 export const customersRouter = Router();
+
+const CASE_MANAGEMENT_API_URL = process.env.CASE_MANAGEMENT_API_URL ?? "http://localhost:4311";
+
+async function fetchOpenCasesForAccount(accountId: string): Promise<CaseInstanceSummary[]> {
+  try {
+    const qs = new URLSearchParams({ customerAccountId: accountId, status: "OPEN" });
+    const res = await fetch(`${CASE_MANAGEMENT_API_URL}/api/case-instances?${qs.toString()}`);
+    if (!res.ok) return [];
+    const data: { results: CaseInstanceSummary[] } = await res.json();
+    return data.results;
+  } catch (err) {
+    console.error("Failed to fetch open cases from case-management-api:", err);
+    return [];
+  }
+}
 
 const REQUIRED_CREATE_FIELDS = ["firstName", "lastName", "phone", "dateOfBirth"] as const;
 
@@ -80,7 +95,6 @@ customersRouter.get("/:id", async (req, res) => {
   const customer = await prisma.customer.findUnique({
     where: { id: req.params.id },
     include: {
-      cases: { orderBy: { openedAt: "desc" } },
       interactions: { orderBy: { occurredAt: "desc" } },
     },
   });
@@ -89,7 +103,8 @@ customersRouter.get("/:id", async (req, res) => {
     return res.status(404).json({ error: "Customer not found." });
   }
 
-  res.json(toCustomerDetail(customer));
+  const cases = await fetchOpenCasesForAccount(customer.accountId);
+  res.json(toCustomerDetail(customer, cases));
 });
 
 customersRouter.post("/", async (req, res) => {
@@ -118,7 +133,7 @@ customersRouter.post("/", async (req, res) => {
     const accountId = await generateNextAccountId();
     try {
       const customer = await prisma.customer.create({ data: { ...data, accountId } });
-      return res.status(201).json(toCustomerDetail({ ...customer, cases: [], interactions: [] }));
+      return res.status(201).json(toCustomerDetail({ ...customer, interactions: [] }, []));
     } catch (err) {
       if (isUniqueConstraintError(err) && attempt < 2) continue;
       throw err;

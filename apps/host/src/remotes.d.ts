@@ -11,3 +11,10 @@ declare module "customer/CustomerLookupModule" {
   const CustomerLookupModule: ComponentType<CustomerLookupModuleProps>;
   export default CustomerLookupModule;
 }
+
+declare module "caseManagement/CaseManagementModule" {
+  import type { ComponentType } from "react";
+
+  const CaseManagementModule: ComponentType;
+  export default CaseManagementModule;
+}

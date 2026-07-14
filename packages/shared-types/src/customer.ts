@@ -1,3 +1,5 @@
+import type { CaseInstanceSummary } from "./case";
+
 export interface CustomerSearchParams {
   firstName?: string;
   lastName?: string;
@@ -20,17 +22,6 @@ export interface CustomerSummary {
   companyName: string | null;
 }
 
-export type CaseStatus = "open" | "pending" | "closed";
-export type CasePriority = "low" | "medium" | "high";
-
-export interface CaseSummary {
-  id: string;
-  subject: string;
-  status: CaseStatus;
-  priority: CasePriority | null;
-  openedAt: string;
-}
-
 export type InteractionChannel = "phone" | "email" | "webchat" | "in-person";
 
 export interface InteractionHistoryEntry {
@@ -41,7 +32,8 @@ export interface InteractionHistoryEntry {
 }
 
 export interface CustomerDetail extends CustomerSummary {
-  cases: CaseSummary[];
+  /** Open cases for this customer, sourced live from the Case Management module. */
+  cases: CaseInstanceSummary[];
   interactions: InteractionHistoryEntry[];
 }
 

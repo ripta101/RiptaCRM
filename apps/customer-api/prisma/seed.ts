@@ -1,10 +1,9 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma";
 
 const prisma = new PrismaClient();
 
 async function main() {
   await prisma.interactionHistory.deleteMany();
-  await prisma.case.deleteMany();
   await prisma.customer.deleteMany();
 
   await prisma.customer.create({
@@ -16,22 +15,6 @@ async function main() {
       email: "ripta.ramelan@gmail.com",
       accountId: "ACC-1001",
       companyName: "Ripta Consulting",
-      cases: {
-        create: [
-          {
-            subject: "Card replacement request",
-            status: "open",
-            priority: "medium",
-            openedAt: new Date("2026-07-10T09:15:00.000Z"),
-          },
-          {
-            subject: "Address update",
-            status: "closed",
-            priority: "low",
-            openedAt: new Date("2026-06-02T13:40:00.000Z"),
-          },
-        ],
-      },
       interactions: {
         create: [
           {
@@ -75,16 +58,6 @@ async function main() {
       email: "john.smith@example.com",
       accountId: "ACC-1003",
       companyName: "Smith & Co",
-      cases: {
-        create: [
-          {
-            subject: "Billing dispute",
-            status: "pending",
-            priority: "high",
-            openedAt: new Date("2026-07-01T10:00:00.000Z"),
-          },
-        ],
-      },
       interactions: {
         create: [
           {
