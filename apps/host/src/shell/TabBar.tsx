@@ -5,18 +5,15 @@ import { useInteractions } from "../interactions/InteractionsContext";
 export function TabBar() {
   const { tabs, activeTabId, setActiveTab, closeInteraction } = useInteractions();
 
-  if (tabs.length === 0) {
-    return null;
-  }
-
   return (
     <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
       <Tabs
-        value={activeTabId ?? false}
-        onChange={(_, value) => setActiveTab(value)}
+        value={activeTabId ?? "home"}
+        onChange={(_, value) => setActiveTab(value === "home" ? null : value)}
         variant="scrollable"
         scrollButtons="auto"
       >
+        <Tab value="home" label="Home" />
         {tabs.map((tab) => (
           <Tab
             key={tab.id}
