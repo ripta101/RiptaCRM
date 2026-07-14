@@ -33,6 +33,8 @@ Lets a business admin design how cases work for the business, then runs the resu
 
 `packages/` holds code shared across modules (UI theme, shared types, auth) — not a module in its own right.
 
+See [docs/architecture.md](docs/architecture.md) for a diagram of how the modules connect (Module Federation wiring, REST calls between services, ports).
+
 ## Tech Stack
 
 - React + Vite, composed at runtime via Module Federation

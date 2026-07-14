@@ -27,7 +27,17 @@ I am a technical engineer. My customer will be small to medium business company,
 
 Follow standard MFE monorepo project structure:
 - apps/ - top level folder for the MFEs
+  - `host` - shell app (login, nav, dashboard); loads the remotes below via Module Federation
+  - `customer` - Customer Lookup MFE
+  - `case-management` - Case Management MFE (admin config for case types/stages/SLA)
+  - `customer-api` - BFF for the Customer module (Express + Prisma + SQLite)
+  - `case-management-api` - BFF for the Case Management module (Express + Prisma + SQLite + SLA scheduler)
 - packages/ - shared libraries across MFEs
+  - `shared-types` - cross-cutting TS types/DTOs, consumed by every app
+  - `auth-client` - shared auth context/provider, consumed by the host
+  - `ui` - shared MUI theme, consumed by the frontend apps
 - package.json - Workspace dependencies
 - turbo.json / nx.json - Monorepo task orchestration
 - tsconfig.json - Global typescript config
+
+See `docs/architecture.md` for the full architecture diagram and service wiring (ports, Module Federation remotes, REST calls between services).
