@@ -87,12 +87,15 @@ export function StageFlowEditor({ stages, editable, onChanged }: StageFlowEditor
   );
 
   const handleNodeDragStop: OnNodeDrag<Node> = async (_event, node) => {
+    // Deliberately no onChanged() here: React Flow's own onNodesChange already reflects the
+    // dragged position locally, and the server stores exactly what we send — a full reload
+    // (which CaseTypeEditor renders as a page-wide spinner) would just blink the whole page
+    // for no visible benefit.
     try {
       await updateStage(node.id, {
         positionX: Math.round(node.position.x),
         positionY: Math.round(node.position.y),
       });
-      onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save stage position.");
     }
