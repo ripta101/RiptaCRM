@@ -6,7 +6,7 @@ A modular CRM application built as independent React micro-frontend (MFE) module
 
 ### Host (Shell)
 The application frame everything else runs inside. Two roles, two different experiences:
-- Login screen
+- Login screen — backed by a real database (the Auth module), with bcrypt-hashed passwords and a JWT session token
 - Top bar with a hamburger menu and a profile menu (Profile, Settings, Logout)
 - **Frontline users** get a Dashboard with case widgets and a way to start customer interactions (persistent tabs — switching tabs doesn't lose your place), plus a Worklist and IT Support menu
 - **Business admins** get a Dashboard showing recent configuration changes instead, cannot start interactions, and get a WebChat / Email configuration menu (still placeholders) plus a real Case Management configuration screen
@@ -32,6 +32,12 @@ Lets a business admin design how cases work for the business, then runs the resu
 - A background scheduler checks in-progress cases against their SLA due times and fires configured actions automatically
 - Includes a minimal admin-only screen for creating test case instances (not the polished frontline case-working experience — that's still to come) and an Action Log viewer
 
+### Auth
+Backend-only module — issues sessions for the Host's login screen; not a module you see directly.
+- `POST /api/auth/login` validates a username/password against a database of users (bcrypt-hashed passwords) and returns a signed JWT + user profile
+- The Host decodes and checks the token's expiry client-side (no network call on every page load); the token is what future SAML/SSO integration would replace or bridge into, without needing to change how the rest of the app consumes `useAuth()`
+- Seeded with two demo users (`test`/`Passw0rd154@` frontline, `admin`/`Passw0rd154@` business admin) — no user-management UI yet, that's a future feature
+
 `packages/` holds code shared across modules (UI theme, shared types, auth) — not a module in its own right.
 
 See [docs/architecture.md](docs/architecture.md) for a diagram of how the modules connect (Module Federation wiring, REST calls between services, ports).
@@ -40,7 +46,8 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
 
 - React + Vite, composed at runtime via Module Federation
 - MUI (Material UI) component library
-- Express + Prisma + SQLite for the Customer and Case Management modules' backends
+- Express + Prisma + SQLite for the Customer, Case Management, and Auth modules' backends
+- jsonwebtoken + bcryptjs for the Auth module's JWT session tokens and password hashing
 - node-cron for the Case Management module's SLA scheduler
 - @xyflow/react for the Case Management module's stage-transition flow diagram; @dnd-kit for drag-and-drop stage reordering
 - Turborepo + pnpm workspaces
@@ -64,6 +71,13 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
    pnpm --filter @riptacrm/case-management-api db:migrate
    ```
    Same as above — applies migrations and seeds sample case types in one step.
+5. Set up the Auth module's database:
+   ```
+   cp apps/auth-api/.env.example apps/auth-api/.env
+   pnpm --filter @riptacrm/auth-api db:migrate
+   ```
+   Applies the migration and seeds the two demo users (`test`/`Passw0rd154@`, `admin`/`Passw0rd154@`) with bcrypt-hashed passwords.
+6. (Optional) `cp apps/host/.env.example apps/host/.env` — only needed if you want to point the Host at a non-default Auth API URL.
 
 ## Starting the Application
 
@@ -71,27 +85,31 @@ From the project root:
 ```
 pnpm dev
 ```
-This starts all five services together:
+This starts all six services together:
 - Host — http://localhost:5173
 - Customer module — http://localhost:5174
 - Customer API — http://localhost:4310
 - Case Management module — http://localhost:5175
 - Case Management API — http://localhost:4311
+- Auth API — http://localhost:4312
 
-The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel, so start both (`pnpm dev` does this automatically) for that panel to show live data.
+The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel, and the Host calls the Auth API to log in — start them all (`pnpm dev` does this automatically) for the full app to work.
 
 Open http://localhost:5173 and log in with one of:
-- `test` / `test` — frontline user
-- `admin` / `admin` — business admin
+- `test` / `Passw0rd154@` — frontline user
+- `admin` / `Passw0rd154@` — business admin
+
+**Note**: login now requires the Auth API to be running. If you run `apps/host` standalone in its own terminal instead of `pnpm dev` from the root, also start `apps/auth-api` (`pnpm --filter @riptacrm/auth-api dev`) separately, or login will fail with a network error.
 
 ## Changing the Database Schema
 
-Both the Customer and Case Management modules' databases use [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in each app's `prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command (substitute the package name for whichever module you're working on), on any machine:
+The Customer, Case Management, and Auth modules' databases all use [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in each app's `prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command (substitute the package name for whichever module you're working on), on any machine:
 
 - **You pulled code that includes new migrations** (someone else changed the schema): run
   ```
   pnpm --filter @riptacrm/customer-api db:migrate
   pnpm --filter @riptacrm/case-management-api db:migrate
+  pnpm --filter @riptacrm/auth-api db:migrate
   ```
   This applies only the migrations your local database doesn't have yet.
 - **You're changing the schema yourself**: edit the app's `prisma/schema.prisma`, then run the same `db:migrate` command. Prisma detects the change, generates a new migration file, and applies it locally. Commit the new `prisma/migrations/<timestamp>_<name>/` folder along with your code change so everyone else picks it up next time they run `db:migrate`.
@@ -102,6 +120,6 @@ Both the Customer and Case Management modules' databases use [Prisma Migrate](ht
 
 ## Stopping the Application
 
-Press `Ctrl+C` in the terminal running `pnpm dev` — this stops all five services together.
+Press `Ctrl+C` in the terminal running `pnpm dev` — this stops all six services together.
 
 If you started any service in its own separate terminal (e.g. `pnpm --filter @riptacrm/host dev`), press `Ctrl+C` in each of those terminals individually.

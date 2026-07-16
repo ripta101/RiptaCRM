@@ -1,4 +1,6 @@
-export type UserRole = "frontline" | "admin";
+import type { UserRole } from "@riptacrm/shared-types";
+
+export type { UserRole };
 
 export interface AuthSession {
   id: string;
@@ -6,6 +8,7 @@ export interface AuthSession {
   email: string;
   avatarUrl?: string;
   role: UserRole;
+  token: string;
 }
 
 export interface AuthProvider {

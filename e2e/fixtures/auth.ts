@@ -8,8 +8,8 @@ async function login(page: Page, username: string, password: string) {
   await page.waitForURL(/\/$/, { timeout: 10_000 });
 }
 
-export const loginAsAdmin = (page: Page) => login(page, "admin", "admin");
-export const loginAsFrontline = (page: Page) => login(page, "test", "test");
+export const loginAsAdmin = (page: Page) => login(page, "admin", "Passw0rd154@");
+export const loginAsFrontline = (page: Page) => login(page, "test", "Passw0rd154@");
 
 export async function openCaseManagement(page: Page) {
   await page.getByRole("button", { name: "open menu" }).click();
