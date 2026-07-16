@@ -182,13 +182,13 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
 
       {tab === "stages" && versionDetail && (
         <Stack spacing={3}>
+          <StageFlowEditor stages={versionDetail.stages} editable={isEditable} onChanged={load} />
           <StageListEditor
             versionId={versionDetail.id}
             stages={versionDetail.stages}
             editable={isEditable}
             onChanged={load}
           />
-          <StageFlowEditor stages={versionDetail.stages} editable={isEditable} onChanged={load} />
         </Stack>
       )}
 

@@ -15,7 +15,7 @@ import {
   toCaseTypeVersionDetail,
   toCaseTypeVersionSummary,
 } from "../lib/mappers";
-import { isUniqueConstraintError } from "../lib/prismaErrors";
+import { isRecordNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
 
 export const caseTypesRouter = Router();
 
@@ -73,7 +73,12 @@ caseTypesRouter.delete("/case-types/:id", async (req, res) => {
   if (instanceCount > 0) {
     return res.status(409).json({ error: "Cannot delete a case type that has case instances." });
   }
-  await prisma.caseType.delete({ where: { id: req.params.id } });
+  try {
+    await prisma.caseType.delete({ where: { id: req.params.id } });
+  } catch (err) {
+    if (!isRecordNotFoundError(err)) throw err;
+    // already gone — DELETE is idempotent
+  }
   res.status(204).end();
 });
 
@@ -294,9 +299,18 @@ caseTypesRouter.patch("/fields/:fieldId", async (req, res) => {
 
 caseTypesRouter.delete("/fields/:fieldId", async (req, res) => {
   const guard = await requireDraftVersionForField(req.params.fieldId);
-  if (guard.error) return res.status(guard.error.status).json(guard.error.body);
+  if (guard.error) {
+    // Already gone — DELETE is idempotent, so a missing target counts as success.
+    if (guard.error.status === 404) return res.status(204).end();
+    return res.status(guard.error.status).json(guard.error.body);
+  }
 
-  await prisma.fieldDefinition.delete({ where: { id: req.params.fieldId } });
+  try {
+    await prisma.fieldDefinition.delete({ where: { id: req.params.fieldId } });
+  } catch (err) {
+    if (!isRecordNotFoundError(err)) throw err;
+    // already gone — DELETE is idempotent
+  }
   res.status(204).end();
 });
 
@@ -396,14 +410,23 @@ caseTypesRouter.patch("/stages/:stageId", async (req, res) => {
 
 caseTypesRouter.delete("/stages/:stageId", async (req, res) => {
   const guard = await requireDraftVersionForStage(req.params.stageId);
-  if (guard.error) return res.status(guard.error.status).json(guard.error.body);
+  if (guard.error) {
+    // Already gone — DELETE is idempotent, so a missing target counts as success.
+    if (guard.error.status === 404) return res.status(204).end();
+    return res.status(guard.error.status).json(guard.error.body);
+  }
 
   const instanceCount = await prisma.caseInstance.count({ where: { currentStageId: req.params.stageId } });
   if (instanceCount > 0) {
     return res.status(409).json({ error: "Cannot delete a stage that a case is currently in." });
   }
 
-  await prisma.stageDefinition.delete({ where: { id: req.params.stageId } });
+  try {
+    await prisma.stageDefinition.delete({ where: { id: req.params.stageId } });
+  } catch (err) {
+    if (!isRecordNotFoundError(err)) throw err;
+    // already gone — DELETE is idempotent
+  }
   res.status(204).end();
 });
 
@@ -453,9 +476,20 @@ caseTypesRouter.post("/stages/:stageId/transitions", async (req, res) => {
 
 caseTypesRouter.delete("/stage-transitions/:transitionId", async (req, res) => {
   const guard = await requireDraftVersionForTransition(req.params.transitionId);
-  if (guard.error) return res.status(guard.error.status).json(guard.error.body);
+  if (guard.error) {
+    // Already gone (e.g. cascaded away when the stage on the other end was deleted
+    // concurrently) — DELETE is idempotent, so a missing target counts as success.
+    if (guard.error.status === 404) return res.status(204).end();
+    return res.status(guard.error.status).json(guard.error.body);
+  }
 
-  await prisma.stageTransition.delete({ where: { id: req.params.transitionId } });
+  try {
+    await prisma.stageTransition.delete({ where: { id: req.params.transitionId } });
+  } catch (err) {
+    if (!isRecordNotFoundError(err)) throw err;
+    // already gone (e.g. cascaded away when the stage on the other end was deleted
+    // concurrently) — DELETE is idempotent, so this counts as success.
+  }
   res.status(204).end();
 });
 
@@ -529,8 +563,17 @@ caseTypesRouter.patch("/actions/:actionId", async (req, res) => {
 
 caseTypesRouter.delete("/actions/:actionId", async (req, res) => {
   const guard = await requireDraftVersionForAction(req.params.actionId);
-  if (guard.error) return res.status(guard.error.status).json(guard.error.body);
+  if (guard.error) {
+    // Already gone — DELETE is idempotent, so a missing target counts as success.
+    if (guard.error.status === 404) return res.status(204).end();
+    return res.status(guard.error.status).json(guard.error.body);
+  }
 
-  await prisma.actionDefinition.delete({ where: { id: req.params.actionId } });
+  try {
+    await prisma.actionDefinition.delete({ where: { id: req.params.actionId } });
+  } catch (err) {
+    if (!isRecordNotFoundError(err)) throw err;
+    // already gone — DELETE is idempotent
+  }
   res.status(204).end();
 });
