@@ -32,6 +32,10 @@ test.describe("Case Type Designer", () => {
     await expect(page.getByRole("cell", { name: "Investigating", exact: true })).toBeVisible();
     await expect(page.locator(".react-flow__node")).toHaveCount(4);
 
+    // Stage list's Transitions column reflects the flow diagram's edges.
+    const newRow = page.locator("table tbody tr", { hasText: "New" });
+    await expect(newRow.getByText("→ Investigating")).toBeVisible();
+
     await page.getByRole("tab", { name: "Actions" }).click();
     await expect(page.getByText("Before Breach")).toBeVisible();
   });

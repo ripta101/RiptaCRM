@@ -1,9 +1,9 @@
 import type { Page } from "@playwright/test";
 
 /**
- * @xyflow/react (and @dnd-kit) require the pointer to cross a drag-activation distance via
- * multiple intermediate move events before internal drag state activates. Passing `{ steps }`
- * to a single `mouse.move()` call dispatches all intermediate events in one tight synchronous
+ * @xyflow/react requires the pointer to cross a drag-activation distance via multiple
+ * intermediate move events before internal drag state activates. Passing `{ steps }` to a
+ * single `mouse.move()` call dispatches all intermediate events in one tight synchronous
  * burst, which is not reliably enough for React/XYFlow's internal state to register — an
  * explicit loop of individually-awaited `mouse.move()` calls, with real pauses between them,
  * is what actually works.
@@ -33,6 +33,26 @@ export async function dragNode(page: Page, nodeId: string, deltaX: number, delta
 
   const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   const end = { x: start.x + deltaX, y: start.y + deltaY };
+  await realisticDrag(page, start, end);
+}
+
+/**
+ * Drags a node to just past another node's on-screen right edge. Targets a screen position
+ * relative to the other node (rather than a fixed pixel delta) because React Flow's `fitView`
+ * auto-zooms the canvas — a fixed pixel offset doesn't map 1:1 to logical flow coordinates at
+ * arbitrary zoom levels, so a fixed delta can't reliably guarantee crossing another node's
+ * actual position.
+ */
+export async function dragNodePastNode(page: Page, nodeId: string, targetNodeId: string) {
+  const node = page.locator(`.react-flow__node[data-id="${nodeId}"]`);
+  const target = page.locator(`.react-flow__node[data-id="${targetNodeId}"]`);
+  await node.scrollIntoViewIfNeeded();
+  const box = await node.boundingBox();
+  const targetBox = await target.boundingBox();
+  if (!box || !targetBox) throw new Error("Node not found or not visible");
+
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const end = { x: targetBox.x + targetBox.width + 60, y: start.y };
   await realisticDrag(page, start, end);
 }
 
@@ -66,21 +86,4 @@ export async function selectAndDeleteNode(page: Page, nodeId: string) {
   await node.click();
   await page.waitForTimeout(200);
   await page.keyboard.press("Delete");
-}
-
-/** Drags a table row (identified by its visible text) to just below another row. */
-export async function dragTableRowBelow(page: Page, rowText: string, targetRowText: string) {
-  const sourceRow = page.locator("table tbody tr", { hasText: rowText });
-  const targetRow = page.locator("table tbody tr", { hasText: targetRowText });
-  const sourceHandle = sourceRow.locator("td").first();
-  await sourceHandle.scrollIntoViewIfNeeded();
-  const sourceBox = await sourceHandle.boundingBox();
-  const targetBox = await targetRow.boundingBox();
-  if (!sourceBox || !targetBox) throw new Error("Could not locate source/target table rows");
-
-  await realisticDrag(
-    page,
-    { x: sourceBox.x + sourceBox.width / 2, y: sourceBox.y + sourceBox.height / 2 },
-    { x: sourceBox.x + sourceBox.width / 2, y: targetBox.y + targetBox.height + 5 },
-  );
 }

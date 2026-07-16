@@ -1,24 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  DndContext,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
   Alert,
   Box,
   Button,
   Checkbox,
+  Chip,
   IconButton,
   Paper,
   Stack,
@@ -31,7 +17,6 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import SaveIcon from "@mui/icons-material/Save";
 import type { StageDefinition } from "@riptacrm/shared-types";
 import { createStage, deleteStage, updateStage } from "../api/client";
@@ -45,21 +30,19 @@ interface StageListEditorProps {
 
 function StageRow({
   stage,
+  stageNameById,
   editable,
   onChanged,
   onError,
 }: {
   stage: StageDefinition;
+  stageNameById: Map<string, string>;
   editable: boolean;
   onChanged: () => void;
   onError: (msg: string) => void;
 }) {
   const [slaMinutes, setSlaMinutes] = useState(String(stage.slaMinutes));
   const [isTerminal, setIsTerminal] = useState(stage.isTerminal);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: stage.id,
-    disabled: !editable,
-  });
 
   useEffect(() => {
     setSlaMinutes(String(stage.slaMinutes));
@@ -87,19 +70,7 @@ function StageRow({
   }
 
   return (
-    <TableRow
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-      }}
-    >
-      {editable && (
-        <TableCell sx={{ width: 32, cursor: "grab" }} {...attributes} {...listeners}>
-          <DragIndicatorIcon fontSize="small" color="disabled" />
-        </TableCell>
-      )}
+    <TableRow>
       <TableCell>{stage.name}</TableCell>
       <TableCell>{stage.key}</TableCell>
       <TableCell>
@@ -125,6 +96,19 @@ function StageRow({
           "No"
         )}
       </TableCell>
+      <TableCell>
+        {stage.allowedNextStages.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            —
+          </Typography>
+        ) : (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {stage.allowedNextStages.map((t) => (
+              <Chip key={t.id} size="small" label={`→ ${stageNameById.get(t.toStageId) ?? "?"}`} />
+            ))}
+          </Stack>
+        )}
+      </TableCell>
       <TableCell>{stage.actions.length}</TableCell>
       {editable && (
         <TableCell align="right">
@@ -145,9 +129,13 @@ function StageRow({
 export function StageListEditor({ versionId, stages, editable, onChanged }: StageListEditorProps) {
   const [form, setForm] = useState({ key: "", name: "", slaMinutes: "60" });
   const [error, setError] = useState<string | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const sortedStages = stages.slice().sort((a, b) => a.displayOrder - b.displayOrder);
+  // Ordered to match the flow diagram's left-to-right layout, so dragging a node on the
+  // canvas is the one and only way to reorder — no separate, driftable list ordering.
+  const sortedStages = stages
+    .slice()
+    .sort((a, b) => a.positionX - b.positionX || a.displayOrder - b.displayOrder);
+  const stageNameById = new Map(stages.map((s) => [s.id, s.name]));
 
   async function handleAdd() {
     setError(null);
@@ -162,25 +150,6 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add stage.");
-    }
-  }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = sortedStages.findIndex((s) => s.id === active.id);
-    const newIndex = sortedStages.findIndex((s) => s.id === over.id);
-    const reordered = arrayMove(sortedStages, oldIndex, newIndex);
-
-    setError(null);
-    try {
-      await Promise.all(
-        reordered.map((s, i) => (s.displayOrder !== i ? updateStage(s.id, { displayOrder: i }) : null)),
-      );
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reorder stages.");
     }
   }
 
@@ -225,38 +194,38 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
       )}
 
       <Paper variant="outlined" sx={{ mb: 2 }}>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <Table>
-            <TableHead>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Key</TableCell>
+              <TableCell>SLA (minutes)</TableCell>
+              <TableCell>Terminal</TableCell>
+              <TableCell>Transitions</TableCell>
+              <TableCell>Actions configured</TableCell>
+              {editable && <TableCell align="right" />}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {sortedStages.map((s) => (
+              <StageRow
+                key={s.id}
+                stage={s}
+                stageNameById={stageNameById}
+                editable={editable}
+                onChanged={onChanged}
+                onError={setError}
+              />
+            ))}
+            {stages.length === 0 && (
               <TableRow>
-                {editable && <TableCell />}
-                <TableCell>Name</TableCell>
-                <TableCell>Key</TableCell>
-                <TableCell>SLA (minutes)</TableCell>
-                <TableCell>Terminal</TableCell>
-                <TableCell>Actions configured</TableCell>
-                {editable && <TableCell align="right" />}
+                <TableCell colSpan={7}>
+                  <Typography color="text.secondary">No stages defined yet.</Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <SortableContext
-              items={sortedStages.map((s) => s.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <TableBody>
-                {sortedStages.map((s) => (
-                  <StageRow key={s.id} stage={s} editable={editable} onChanged={onChanged} onError={setError} />
-                ))}
-                {stages.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7}>
-                      <Typography color="text.secondary">No stages defined yet.</Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </SortableContext>
-          </Table>
-        </DndContext>
+            )}
+          </TableBody>
+        </Table>
       </Paper>
     </Box>
   );

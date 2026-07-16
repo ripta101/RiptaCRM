@@ -60,9 +60,10 @@ interface StageFlowEditorProps {
   stages: StageDefinition[];
   editable: boolean;
   onChanged: () => void;
+  onPositionChanged: (stageId: string, positionX: number, positionY: number) => void;
 }
 
-export function StageFlowEditor({ stages, editable, onChanged }: StageFlowEditorProps) {
+export function StageFlowEditor({ stages, editable, onChanged, onPositionChanged }: StageFlowEditorProps) {
   const [error, setError] = useState<string | null>(null);
   // React Flow needs to own node/edge selection, dragging-in-progress, etc. via its normal
   // onNodesChange/onEdgesChange delta API — passing `stages`-derived nodes/edges straight
@@ -87,15 +88,16 @@ export function StageFlowEditor({ stages, editable, onChanged }: StageFlowEditor
   );
 
   const handleNodeDragStop: OnNodeDrag<Node> = async (_event, node) => {
-    // Deliberately no onChanged() here: React Flow's own onNodesChange already reflects the
-    // dragged position locally, and the server stores exactly what we send — a full reload
-    // (which CaseTypeEditor renders as a page-wide spinner) would just blink the whole page
-    // for no visible benefit.
+    // Deliberately no onChanged() here: that triggers a full server refetch, which
+    // CaseTypeEditor renders as a page-wide spinner — a jarring blink for no benefit, since
+    // React Flow's own onNodesChange already reflects the dragged position locally. Instead,
+    // patch the position into the shared `stages` state directly (no network round-trip) so
+    // sibling views (the stage list, sorted by position) stay in sync too.
+    const positionX = Math.round(node.position.x);
+    const positionY = Math.round(node.position.y);
     try {
-      await updateStage(node.id, {
-        positionX: Math.round(node.position.x),
-        positionY: Math.round(node.position.y),
-      });
+      await updateStage(node.id, { positionX, positionY });
+      onPositionChanged(node.id, positionX, positionY);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save stage position.");
     }

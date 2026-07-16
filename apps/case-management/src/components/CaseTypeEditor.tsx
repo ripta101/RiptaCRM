@@ -87,6 +87,17 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
     }
   }
 
+  // Patches a dragged stage's position into local state directly, with no server refetch —
+  // keeps the stage list (sorted by position) in sync without the full-page reload/spinner
+  // a real reload would cause.
+  function handleStagePositionChanged(stageId: string, positionX: number, positionY: number) {
+    setVersionDetail((prev) =>
+      prev
+        ? { ...prev, stages: prev.stages.map((s) => (s.id === stageId ? { ...s, positionX, positionY } : s)) }
+        : prev,
+    );
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -182,7 +193,12 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
 
       {tab === "stages" && versionDetail && (
         <Stack spacing={3}>
-          <StageFlowEditor stages={versionDetail.stages} editable={isEditable} onChanged={load} />
+          <StageFlowEditor
+            stages={versionDetail.stages}
+            editable={isEditable}
+            onChanged={load}
+            onPositionChanged={handleStagePositionChanged}
+          />
           <StageListEditor
             versionId={versionDetail.id}
             stages={versionDetail.stages}
