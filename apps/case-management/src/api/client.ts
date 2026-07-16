@@ -11,8 +11,10 @@ import type {
   CreateCaseTypeInput,
   CreateFieldInput,
   CreateStageInput,
+  CreateStageTransitionInput,
   FieldDefinition,
   StageDefinition,
+  StageTransition,
   UpdateActionInput,
   UpdateFieldInput,
   UpdateStageInput,
@@ -75,6 +77,15 @@ export const updateStage = (stageId: string, input: UpdateStageInput) =>
   request<StageDefinition>(`/api/stages/${stageId}`, { method: "PATCH", body: JSON.stringify(input) });
 export const deleteStage = (stageId: string) =>
   request<void>(`/api/stages/${stageId}`, { method: "DELETE" });
+
+// Stage transitions
+export const createStageTransition = (stageId: string, input: CreateStageTransitionInput) =>
+  request<StageTransition>(`/api/stages/${stageId}/transitions`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+export const deleteStageTransition = (transitionId: string) =>
+  request<void>(`/api/stage-transitions/${transitionId}`, { method: "DELETE" });
 
 // Actions
 export const createAction = (stageId: string, input: CreateActionInput) =>

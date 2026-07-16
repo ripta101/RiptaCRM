@@ -17,6 +17,7 @@ async function main() {
   await prisma.caseFieldValue.deleteMany();
   await prisma.caseInstance.deleteMany();
   await prisma.actionDefinition.deleteMany();
+  await prisma.stageTransition.deleteMany();
   await prisma.stageDefinition.deleteMany();
   await prisma.fieldDefinition.deleteMany();
   await prisma.caseTypeVersion.deleteMany();
@@ -68,6 +69,8 @@ async function main() {
                   name: "New",
                   slaMinutes: 60,
                   displayOrder: 0,
+                  positionX: 0,
+                  positionY: 120,
                   actions: {
                     create: [
                       {
@@ -110,6 +113,8 @@ async function main() {
                   name: "Investigating",
                   slaMinutes: 1440,
                   displayOrder: 1,
+                  positionX: 220,
+                  positionY: 120,
                   actions: {
                     create: [
                       {
@@ -130,6 +135,8 @@ async function main() {
                   name: "Resolved",
                   slaMinutes: 2880,
                   displayOrder: 2,
+                  positionX: 440,
+                  positionY: 120,
                 },
                 {
                   key: "closed",
@@ -137,6 +144,8 @@ async function main() {
                   slaMinutes: 0,
                   isTerminal: true,
                   displayOrder: 3,
+                  positionX: 660,
+                  positionY: 120,
                 },
               ],
             },
@@ -147,7 +156,7 @@ async function main() {
     include: { versions: { include: { stages: true } } },
   });
 
-  await prisma.caseType.create({
+  const serviceRequest = await prisma.caseType.create({
     data: {
       key: "service-request",
       name: "Service Request",
@@ -184,6 +193,8 @@ async function main() {
                   name: "Open",
                   slaMinutes: 30,
                   displayOrder: 0,
+                  positionX: 0,
+                  positionY: 120,
                   actions: {
                     create: [
                       {
@@ -204,6 +215,8 @@ async function main() {
                   name: "In Progress",
                   slaMinutes: 480,
                   displayOrder: 1,
+                  positionX: 220,
+                  positionY: 120,
                 },
                 {
                   key: "completed",
@@ -211,6 +224,8 @@ async function main() {
                   slaMinutes: 0,
                   isTerminal: true,
                   displayOrder: 2,
+                  positionX: 440,
+                  positionY: 120,
                 },
               ],
             },
@@ -218,9 +233,28 @@ async function main() {
         ],
       },
     },
+    include: { versions: { include: { stages: true } } },
   });
 
   const complaintVersion = complaint.versions[0];
+  const complaintStage = (key: string) => complaintVersion.stages.find((s) => s.key === key)!.id;
+  await prisma.stageTransition.createMany({
+    data: [
+      { fromStageId: complaintStage("new"), toStageId: complaintStage("investigating") },
+      { fromStageId: complaintStage("investigating"), toStageId: complaintStage("resolved") },
+      { fromStageId: complaintStage("resolved"), toStageId: complaintStage("closed") },
+    ],
+  });
+
+  const serviceRequestVersion = serviceRequest.versions[0];
+  const serviceRequestStage = (key: string) => serviceRequestVersion.stages.find((s) => s.key === key)!.id;
+  await prisma.stageTransition.createMany({
+    data: [
+      { fromStageId: serviceRequestStage("open"), toStageId: serviceRequestStage("in-progress") },
+      { fromStageId: serviceRequestStage("in-progress"), toStageId: serviceRequestStage("completed") },
+    ],
+  });
+
   const investigatingStage = complaintVersion.stages.find((s) => s.key === "investigating")!;
   const descriptionField = await prisma.fieldDefinition.findFirstOrThrow({
     where: { caseTypeVersionId: complaintVersion.id, fieldKey: "description" },

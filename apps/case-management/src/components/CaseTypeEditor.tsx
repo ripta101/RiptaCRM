@@ -22,6 +22,7 @@ import {
 } from "../api/client";
 import { FieldListEditor } from "./FieldListEditor";
 import { StageListEditor } from "./StageListEditor";
+import { StageFlowEditor } from "./StageFlowEditor";
 import { ActionListEditor } from "./ActionListEditor";
 import { CaseInstancesPanel } from "./CaseInstancesPanel";
 
@@ -180,12 +181,15 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
       )}
 
       {tab === "stages" && versionDetail && (
-        <StageListEditor
-          versionId={versionDetail.id}
-          stages={versionDetail.stages}
-          editable={isEditable}
-          onChanged={load}
-        />
+        <Stack spacing={3}>
+          <StageListEditor
+            versionId={versionDetail.id}
+            stages={versionDetail.stages}
+            editable={isEditable}
+            onChanged={load}
+          />
+          <StageFlowEditor stages={versionDetail.stages} editable={isEditable} onChanged={load} />
+        </Stack>
       )}
 
       {tab === "actions" && versionDetail && (

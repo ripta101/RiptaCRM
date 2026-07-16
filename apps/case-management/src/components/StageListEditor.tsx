@@ -1,5 +1,20 @@
 import { useEffect, useState } from "react";
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Alert,
   Box,
   Button,
@@ -16,6 +31,7 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import SaveIcon from "@mui/icons-material/Save";
 import type { StageDefinition } from "@riptacrm/shared-types";
 import { createStage, deleteStage, updateStage } from "../api/client";
@@ -40,6 +56,10 @@ function StageRow({
 }) {
   const [slaMinutes, setSlaMinutes] = useState(String(stage.slaMinutes));
   const [isTerminal, setIsTerminal] = useState(stage.isTerminal);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: stage.id,
+    disabled: !editable,
+  });
 
   useEffect(() => {
     setSlaMinutes(String(stage.slaMinutes));
@@ -67,7 +87,19 @@ function StageRow({
   }
 
   return (
-    <TableRow>
+    <TableRow
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      {editable && (
+        <TableCell sx={{ width: 32, cursor: "grab" }} {...attributes} {...listeners}>
+          <DragIndicatorIcon fontSize="small" color="disabled" />
+        </TableCell>
+      )}
       <TableCell>{stage.name}</TableCell>
       <TableCell>{stage.key}</TableCell>
       <TableCell>
@@ -113,6 +145,9 @@ function StageRow({
 export function StageListEditor({ versionId, stages, editable, onChanged }: StageListEditorProps) {
   const [form, setForm] = useState({ key: "", name: "", slaMinutes: "60" });
   const [error, setError] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const sortedStages = stages.slice().sort((a, b) => a.displayOrder - b.displayOrder);
 
   async function handleAdd() {
     setError(null);
@@ -130,6 +165,25 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
     }
   }
 
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedStages.findIndex((s) => s.id === active.id);
+    const newIndex = sortedStages.findIndex((s) => s.id === over.id);
+    const reordered = arrayMove(sortedStages, oldIndex, newIndex);
+
+    setError(null);
+    try {
+      await Promise.all(
+        reordered.map((s, i) => (s.displayOrder !== i ? updateStage(s.id, { displayOrder: i }) : null)),
+      );
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reorder stages.");
+    }
+  }
+
   return (
     <Box>
       {error && (
@@ -138,33 +192,38 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
         </Alert>
       )}
       <Paper variant="outlined" sx={{ mb: 2 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Key</TableCell>
-              <TableCell>SLA (minutes)</TableCell>
-              <TableCell>Terminal</TableCell>
-              <TableCell>Actions configured</TableCell>
-              {editable && <TableCell align="right" />}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {stages
-              .slice()
-              .sort((a, b) => a.displayOrder - b.displayOrder)
-              .map((s) => (
-                <StageRow key={s.id} stage={s} editable={editable} onChanged={onChanged} onError={setError} />
-              ))}
-            {stages.length === 0 && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={6}>
-                  <Typography color="text.secondary">No stages defined yet.</Typography>
-                </TableCell>
+                {editable && <TableCell />}
+                <TableCell>Name</TableCell>
+                <TableCell>Key</TableCell>
+                <TableCell>SLA (minutes)</TableCell>
+                <TableCell>Terminal</TableCell>
+                <TableCell>Actions configured</TableCell>
+                {editable && <TableCell align="right" />}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <SortableContext
+              items={sortedStages.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <TableBody>
+                {sortedStages.map((s) => (
+                  <StageRow key={s.id} stage={s} editable={editable} onChanged={onChanged} onError={setError} />
+                ))}
+                {stages.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7}>
+                      <Typography color="text.secondary">No stages defined yet.</Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </SortableContext>
+          </Table>
+        </DndContext>
       </Paper>
 
       {editable && (

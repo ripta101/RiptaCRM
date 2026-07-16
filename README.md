@@ -25,7 +25,8 @@ Find a customer and see their history. Opens inside a new interaction tab (not a
 
 ### Case Management
 Lets a business admin design how cases work for the business, then runs the resulting SLA/automation engine.
-- Create case types (e.g. "Complaint", "Service Request"), each with its own configurable fields (text, number, date, select, textarea, checkbox — with required flags and select options), ordered stages, and a per-stage SLA
+- Create case types (e.g. "Complaint", "Service Request"), each with its own configurable fields (text, number, date, select, textarea, checkbox — with required flags and select options), drag-and-drop-orderable stages, and a per-stage SLA
+- Configure exactly which stages a stage can move to next via a visual flow diagram (e.g. a "Level 1" stage can be allowed to reach "Level 2" or "Closed" but not skip straight to "Level 3 Escalation") — a stage with no configured outgoing transitions allows no moves out of it, so case flows are locked-down by default until deliberately designed
 - Configure automated actions per stage, triggered before/at/after an SLA breach — currently one action type ("Send Email"), which is simulated and recorded to an Action Log rather than actually sent
 - Every case type's design (fields + stages + SLA + actions) is versioned as one bundle: admins edit a **draft**, and nothing changes for cases already in progress until the admin explicitly **publishes** it — each case stays pinned to the exact version it was created under, forever
 - A background scheduler checks in-progress cases against their SLA due times and fires configured actions automatically
@@ -41,6 +42,7 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
 - MUI (Material UI) component library
 - Express + Prisma + SQLite for the Customer and Case Management modules' backends
 - node-cron for the Case Management module's SLA scheduler
+- @xyflow/react for the Case Management module's stage-transition flow diagram; @dnd-kit for drag-and-drop stage reordering
 - Turborepo + pnpm workspaces
 
 ## Prerequisites (one-time setup)

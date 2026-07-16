@@ -121,6 +121,15 @@ caseInstancesRouter.post("/case-instances/:id/transitions", async (req, res) => 
     return res.status(400).json({ error: "toStageId must be a stage belonging to this case's version." });
   }
 
+  const allowed = await prisma.stageTransition.findUnique({
+    where: { fromStageId_toStageId: { fromStageId: instance.currentStageId, toStageId: toStage.id } },
+  });
+  if (!allowed) {
+    return res.status(400).json({
+      error: "This stage transition is not allowed. Configure it in the Stages & SLA flow diagram first.",
+    });
+  }
+
   const currentHistory = instance.stageHistory.find((h) => h.exitedAt === null);
   const now = new Date();
 

@@ -8,6 +8,7 @@ import type {
   CaseTypeVersion as PrismaCaseTypeVersion,
   FieldDefinition as PrismaFieldDefinition,
   StageDefinition as PrismaStageDefinition,
+  StageTransition as PrismaStageTransition,
 } from "../../generated/prisma";
 import type {
   ActionDefinition,
@@ -49,7 +50,7 @@ export function toActionDefinition(a: PrismaActionDefinition): ActionDefinition 
 }
 
 export function toStageDefinition(
-  s: PrismaStageDefinition & { actions: PrismaActionDefinition[] },
+  s: PrismaStageDefinition & { actions: PrismaActionDefinition[]; transitionsFrom: PrismaStageTransition[] },
 ): StageDefinition {
   return {
     id: s.id,
@@ -58,7 +59,10 @@ export function toStageDefinition(
     slaMinutes: s.slaMinutes,
     isTerminal: s.isTerminal,
     displayOrder: s.displayOrder,
+    positionX: s.positionX,
+    positionY: s.positionY,
     actions: s.actions.map(toActionDefinition),
+    allowedNextStages: s.transitionsFrom.map((t) => ({ id: t.id, toStageId: t.toStageId })),
   };
 }
 
@@ -77,7 +81,7 @@ export function toCaseTypeVersionSummary(v: PrismaCaseTypeVersion): CaseTypeVers
 export function toCaseTypeVersionDetail(
   v: PrismaCaseTypeVersion & {
     fields: PrismaFieldDefinition[];
-    stages: (PrismaStageDefinition & { actions: PrismaActionDefinition[] })[];
+    stages: (PrismaStageDefinition & { actions: PrismaActionDefinition[]; transitionsFrom: PrismaStageTransition[] })[];
   },
 ): CaseTypeVersionDetail {
   return {

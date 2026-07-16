@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -21,8 +22,18 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import type { CaseInstanceSummary, CaseTypeVersionDetail, CaseTypeVersionSummary } from "@riptacrm/shared-types";
-import { createCaseInstance, deleteCaseInstance, getCaseTypeVersion, listCaseInstances } from "../api/client";
+import type {
+  CaseInstanceSummary,
+  CaseTypeVersionDetail,
+  CaseTypeVersionSummary,
+} from "@riptacrm/shared-types";
+import {
+  createCaseInstance,
+  deleteCaseInstance,
+  getCaseTypeVersion,
+  listCaseInstances,
+  transitionCaseInstance,
+} from "../api/client";
 import { DynamicFieldForm } from "./DynamicFieldForm";
 
 interface CaseInstancesPanelProps {
@@ -30,10 +41,67 @@ interface CaseInstancesPanelProps {
   publishedVersion: CaseTypeVersionSummary | null;
 }
 
+function AdvanceCell({
+  instance,
+  version,
+  onChanged,
+  onError,
+}: {
+  instance: CaseInstanceSummary;
+  version: CaseTypeVersionDetail | undefined;
+  onChanged: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [toStageId, setToStageId] = useState("");
+
+  if (instance.status === "CLOSED" || !version) return <>—</>;
+
+  const currentStage = version.stages.find((s) => s.id === instance.currentStageId);
+  const allowedNextStages = currentStage?.allowedNextStages ?? [];
+  if (allowedNextStages.length === 0) return <>—</>;
+
+  async function handleGo() {
+    if (!toStageId) return;
+    try {
+      await transitionCaseInstance(instance.id, { toStageId });
+      setToStageId("");
+      onChanged();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to advance case.");
+    }
+  }
+
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <TextField
+        select
+        size="small"
+        value={toStageId}
+        onChange={(e) => setToStageId(e.target.value)}
+        sx={{ minWidth: 140 }}
+      >
+        {allowedNextStages.map((t) => {
+          const target = version.stages.find((s) => s.id === t.toStageId);
+          return (
+            <MenuItem key={t.id} value={t.toStageId}>
+              {target?.name ?? t.toStageId}
+            </MenuItem>
+          );
+        })}
+      </TextField>
+      <Button size="small" variant="outlined" disabled={!toStageId} onClick={handleGo}>
+        Go
+      </Button>
+    </Stack>
+  );
+}
+
 export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstancesPanelProps) {
   const [instances, setInstances] = useState<CaseInstanceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [versionCache, setVersionCache] = useState<Record<string, CaseTypeVersionDetail>>({});
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [versionDetail, setVersionDetail] = useState<CaseTypeVersionDetail | null>(null);
@@ -43,15 +111,33 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
   const [contactEmail, setContactEmail] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  function load() {
+  async function load() {
     setLoading(true);
-    listCaseInstances({ caseTypeId })
-      .then(setInstances)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    try {
+      const results = await listCaseInstances({ caseTypeId });
+      setInstances(results);
+
+      const uncachedVersionIds = [...new Set(results.map((i) => i.caseTypeVersionId))].filter(
+        (id) => !versionCache[id],
+      );
+      if (uncachedVersionIds.length > 0) {
+        const fetched = await Promise.all(uncachedVersionIds.map((id) => getCaseTypeVersion(id)));
+        setVersionCache((cache) => {
+          const next = { ...cache };
+          for (const v of fetched) next[v.id] = v;
+          return next;
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load case instances.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(load, [caseTypeId]);
+  useEffect(() => {
+    load();
+  }, [caseTypeId]);
 
   async function openDialog() {
     if (!publishedVersion) return;
@@ -103,6 +189,11 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
       </Box>
 
       {!publishedVersion && <Alert severity="info">Publish a version before creating case instances.</Alert>}
+      {advanceError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setAdvanceError(null)}>
+          {advanceError}
+        </Alert>
+      )}
 
       {loading && (
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -122,6 +213,7 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
                 <TableCell>SLA due</TableCell>
                 <TableCell>Assigned to</TableCell>
                 <TableCell>Customer</TableCell>
+                <TableCell>Advance</TableCell>
                 <TableCell align="right" />
               </TableRow>
             </TableHead>
@@ -139,6 +231,14 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
                   <TableCell>{new Date(i.slaDueAt).toLocaleString()}</TableCell>
                   <TableCell>{i.assignedToUserId ?? "—"}</TableCell>
                   <TableCell>{i.customerAccountId ?? "—"}</TableCell>
+                  <TableCell>
+                    <AdvanceCell
+                      instance={i}
+                      version={versionCache[i.caseTypeVersionId]}
+                      onChanged={load}
+                      onError={setAdvanceError}
+                    />
+                  </TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => handleDelete(i.id)}>
                       <DeleteIcon fontSize="small" />
@@ -148,7 +248,7 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
               ))}
               {instances.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <Typography color="text.secondary">No case instances yet.</Typography>
                   </TableCell>
                 </TableRow>

@@ -33,6 +33,16 @@ export interface ActionDefinition {
   config: EmailActionConfig;
 }
 
+export interface StageTransition {
+  id: string;
+  fromStageId: string;
+  toStageId: string;
+}
+
+export interface CreateStageTransitionInput {
+  toStageId: string;
+}
+
 export interface StageDefinition {
   id: string;
   key: string;
@@ -40,7 +50,10 @@ export interface StageDefinition {
   slaMinutes: number;
   isTerminal: boolean;
   displayOrder: number;
+  positionX: number;
+  positionY: number;
   actions: ActionDefinition[];
+  allowedNextStages: { id: string; toStageId: string }[];
 }
 
 export interface CaseTypeVersionSummary {
@@ -91,6 +104,8 @@ export interface CreateStageInput {
   slaMinutes: number;
   isTerminal?: boolean;
   displayOrder: number;
+  positionX?: number;
+  positionY?: number;
 }
 
 export type UpdateStageInput = Partial<CreateStageInput>;
