@@ -191,6 +191,39 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
           {error}
         </Alert>
       )}
+      {editable && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Add Stage
+          </Typography>
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap alignItems="center">
+            <TextField
+              label="Key"
+              size="small"
+              value={form.key}
+              onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
+            />
+            <TextField
+              label="Name"
+              size="small"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+            <TextField
+              label="SLA (minutes)"
+              type="number"
+              size="small"
+              value={form.slaMinutes}
+              onChange={(e) => setForm((f) => ({ ...f, slaMinutes: e.target.value }))}
+              sx={{ width: 140 }}
+            />
+            <Button variant="contained" disabled={!form.key.trim() || !form.name.trim()} onClick={handleAdd}>
+              Add
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
       <Paper variant="outlined" sx={{ mb: 2 }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <Table>
@@ -225,39 +258,6 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
           </Table>
         </DndContext>
       </Paper>
-
-      {editable && (
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Add Stage
-          </Typography>
-          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap alignItems="center">
-            <TextField
-              label="Key"
-              size="small"
-              value={form.key}
-              onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
-            />
-            <TextField
-              label="Name"
-              size="small"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            />
-            <TextField
-              label="SLA (minutes)"
-              type="number"
-              size="small"
-              value={form.slaMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, slaMinutes: e.target.value }))}
-              sx={{ width: 140 }}
-            />
-            <Button variant="contained" disabled={!form.key.trim() || !form.name.trim()} onClick={handleAdd}>
-              Add
-            </Button>
-          </Stack>
-        </Paper>
-      )}
     </Box>
   );
 }
