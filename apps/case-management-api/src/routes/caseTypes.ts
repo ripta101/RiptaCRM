@@ -214,6 +214,22 @@ caseTypesRouter.post("/case-type-versions/:versionId/publish", async (req, res) 
   res.json(toCaseTypeVersionSummary(published));
 });
 
+caseTypesRouter.delete("/case-type-versions/:versionId", async (req, res) => {
+  const version = await prisma.caseTypeVersion.findUnique({ where: { id: req.params.versionId } });
+  if (!version) return res.status(204).end(); // already gone — DELETE is idempotent
+  if (version.status !== "DRAFT") {
+    return res.status(409).json({ error: "Only a draft version can be deleted." });
+  }
+
+  try {
+    await prisma.caseTypeVersion.delete({ where: { id: req.params.versionId } });
+  } catch (err) {
+    if (!isRecordNotFoundError(err)) throw err;
+    // already gone — DELETE is idempotent
+  }
+  res.status(204).end();
+});
+
 async function requireDraftVersionForField(fieldId: string) {
   const field = await prisma.fieldDefinition.findUnique({
     where: { id: fieldId },

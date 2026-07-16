@@ -55,6 +55,8 @@ export const createDraftVersion = (caseTypeId: string) =>
   request<CaseTypeVersionDetail>(`/api/case-types/${caseTypeId}/versions/draft`, { method: "POST" });
 export const publishVersion = (versionId: string) =>
   request<CaseTypeVersionSummary>(`/api/case-type-versions/${versionId}/publish`, { method: "POST" });
+export const deleteCaseTypeVersion = (versionId: string) =>
+  request<void>(`/api/case-type-versions/${versionId}`, { method: "DELETE" });
 
 // Fields
 export const createField = (versionId: string, input: CreateFieldInput) =>

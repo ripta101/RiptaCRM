@@ -5,6 +5,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Stack,
   Tab,
   Tabs,
@@ -15,6 +20,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import type { CaseTypeSummary, CaseTypeVersionDetail, CaseTypeVersionSummary } from "@riptacrm/shared-types";
 import {
   createDraftVersion,
+  deleteCaseTypeVersion,
   getCaseType,
   getCaseTypeVersion,
   listCaseTypeVersions,
@@ -41,6 +47,7 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [tab, setTab] = useState<EditorTab>("details");
+  const [deleteDraftDialogOpen, setDeleteDraftDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,6 +91,18 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
       await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to publish.");
+    }
+  }
+
+  async function handleDeleteDraft() {
+    if (!versionDetail) return;
+    setActionError(null);
+    setDeleteDraftDialogOpen(false);
+    try {
+      await deleteCaseTypeVersion(versionDetail.id);
+      await load();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to delete draft.");
     }
   }
 
@@ -151,6 +170,11 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
             </span>
           </Tooltip>
         )}
+        {isEditable && (
+          <Button size="small" color="error" onClick={() => setDeleteDraftDialogOpen(true)}>
+            Delete Draft
+          </Button>
+        )}
       </Stack>
 
       {versionHistory.length > 0 && (
@@ -215,6 +239,22 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
       {tab === "instances" && (
         <CaseInstancesPanel caseTypeId={caseTypeId} publishedVersion={caseType.publishedVersion} />
       )}
+
+      <Dialog open={deleteDraftDialogOpen} onClose={() => setDeleteDraftDialogOpen(false)}>
+        <DialogTitle>Delete draft v{caseType.draftVersion?.versionNumber}?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will permanently delete all fields, stages, and actions configured in this draft. The published
+            version (if any) is not affected. This cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDraftDialogOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleDeleteDraft}>
+            Delete Draft
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

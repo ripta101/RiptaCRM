@@ -65,3 +65,46 @@ test.describe("Draft -> publish workflow", () => {
     expect(detail.caseTypeVersionId).toBe(originalVersionId);
   });
 });
+
+test.describe("Delete draft", () => {
+  const DELETE_DRAFT_CASE_TYPE_NAME = "E2E delete-draft";
+  let caseTypeId: string;
+
+  test.beforeAll(async () => {
+    const { caseTypeId: id, draftVersionId } = await createThrowawayCaseType("delete-draft");
+    caseTypeId = id;
+    await publishVersion(draftVersionId);
+  });
+
+  test.afterAll(async () => {
+    await deleteCaseType(caseTypeId);
+  });
+
+  test("cancelling the confirmation keeps the draft; confirming deletes it and leaves the published version intact", async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await openCaseManagement(page);
+    await page.getByText(DELETE_DRAFT_CASE_TYPE_NAME, { exact: true }).click();
+
+    await expect(page.getByText("Published v1")).toBeVisible();
+    await page.getByRole("button", { name: "Create Draft" }).click();
+    await expect(page.getByText("Draft v2")).toBeVisible();
+
+    // Cancel: dialog closes, draft is untouched.
+    await page.getByRole("button", { name: "Delete Draft", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByText("Draft v2")).toBeVisible();
+
+    // Confirm: draft is gone, published version untouched.
+    await page.getByRole("button", { name: "Delete Draft", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete Draft" }).click();
+
+    await expect(page.getByText("Draft v2")).toHaveCount(0);
+    await expect(page.getByText("Published v1")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create Draft" })).toBeVisible();
+  });
+});

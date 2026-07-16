@@ -85,3 +85,72 @@ describe("DELETE /api/stages/:stageId and /api/stage-transitions/:transitionId",
     expect(second.status).toBe(204);
   });
 });
+
+describe("DELETE /api/case-type-versions/:versionId", () => {
+  let caseTypeId: string;
+  let draftVersionId: string;
+  let publishedVersionId: string;
+
+  beforeEach(async () => {
+    const caseType = await prisma.caseType.create({
+      data: {
+        key: `test-delete-draft-${randomUUID()}`,
+        name: "Test Delete Draft Case Type",
+        versions: {
+          create: [
+            {
+              versionNumber: 1,
+              status: "PUBLISHED",
+              publishedAt: new Date(),
+              stages: { create: [{ key: "a", name: "A", slaMinutes: 60, displayOrder: 0 }] },
+            },
+            {
+              versionNumber: 2,
+              status: "DRAFT",
+              stages: { create: [{ key: "a", name: "A", slaMinutes: 60, displayOrder: 0 }] },
+            },
+          ],
+        },
+      },
+      include: { versions: true },
+    });
+
+    caseTypeId = caseType.id;
+    publishedVersionId = caseType.versions.find((v) => v.status === "PUBLISHED")!.id;
+    draftVersionId = caseType.versions.find((v) => v.status === "DRAFT")!.id;
+  });
+
+  afterEach(async () => {
+    await prisma.caseType.delete({ where: { id: caseTypeId } }).catch(() => undefined);
+  });
+
+  it("deletes a draft version, cascading its stages", async () => {
+    const res = await request(app).delete(`/api/case-type-versions/${draftVersionId}`);
+    expect(res.status).toBe(204);
+
+    const remaining = await prisma.caseTypeVersion.findUnique({ where: { id: draftVersionId } });
+    expect(remaining).toBeNull();
+    const remainingStages = await prisma.stageDefinition.findMany({ where: { caseTypeVersionId: draftVersionId } });
+    expect(remainingStages).toHaveLength(0);
+
+    // The published version is untouched.
+    const published = await prisma.caseTypeVersion.findUnique({ where: { id: publishedVersionId } });
+    expect(published).not.toBeNull();
+  });
+
+  it("rejects deleting a published version", async () => {
+    const res = await request(app).delete(`/api/case-type-versions/${publishedVersionId}`);
+    expect(res.status).toBe(409);
+
+    const stillThere = await prisma.caseTypeVersion.findUnique({ where: { id: publishedVersionId } });
+    expect(stillThere).not.toBeNull();
+  });
+
+  it("deleting an already-deleted draft version returns 204, not an error", async () => {
+    const first = await request(app).delete(`/api/case-type-versions/${draftVersionId}`);
+    expect(first.status).toBe(204);
+
+    const second = await request(app).delete(`/api/case-type-versions/${draftVersionId}`);
+    expect(second.status).toBe(204);
+  });
+});
