@@ -20,8 +20,17 @@ I am a technical engineer. My customer will be small to medium business company,
 - Always verify end-to-end in the running app before calling something done
 - Never commit/push without an explicit, standalone request
 - Favor mature, established tools over custom-built solutions
+- New business logic (route handlers, scheduler/SLA math, mappers, anything with branching)
+  must ship with Vitest unit tests in the same package, colocated as `*.test.ts`
+- New user-facing flows must be added as committed Playwright specs under `e2e/tests/` —
+  never as ad hoc scratch scripts; if you wrote one to verify manually, convert it into a
+  spec before calling the task done
+- Before calling a task done, run `pnpm test` and the relevant `e2e` spec(s) in addition to
+  manual verification
 - If verification finds a bug, fix it in the same task and call it out explicitly
 - When creating a test data as part of verification, make sure to delete the test data you created after the verification
+- For visual/UX polish, responsive layout, and cross-browser checks that don't belong in
+  Playwright, use and update `docs/testing/manual-checklist.md`
 
 # Project Structure
 

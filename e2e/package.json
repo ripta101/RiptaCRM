@@ -1,0 +1,19 @@
+{
+  "name": "@riptacrm/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e:reset-db": "pnpm --filter @riptacrm/customer-api run test:e2e:reset-db && pnpm --filter @riptacrm/case-management-api run test:e2e:reset-db",
+    "test:e2e": "pnpm run test:e2e:reset-db && playwright test",
+    "test:e2e:ui": "pnpm run test:e2e:reset-db && playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "lint": "echo \"no lint configured\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.7.0"
+  }
+}

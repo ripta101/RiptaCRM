@@ -186,7 +186,7 @@ function toCaseFieldValue(
   };
 }
 
-function coerceFieldValue(
+export function coerceFieldValue(
   valueText: string | null,
   fieldType: FieldDefinition["fieldType"],
 ): string | number | boolean | null {

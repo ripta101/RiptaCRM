@@ -14,6 +14,13 @@
     },
     "typecheck": {
       "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "test:e2e": {
+      "cache": false,
+      "outputs": ["e2e/playwright-report/**", "e2e/test-results/**"]
     }
   }
 }

@@ -7,6 +7,8 @@ build/
 .env
 .env.*
 !.env.example
+!.env.test
+!.env.e2e
 .DS_Store
 Thumbs.db
 *.log
@@ -17,3 +19,5 @@ pnpm-debug.log*
 *.db-journal
 .mf/
 apps/*/generated/
+e2e/playwright-report/
+e2e/test-results/

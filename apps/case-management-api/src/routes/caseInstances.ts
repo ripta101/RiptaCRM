@@ -188,6 +188,9 @@ caseInstancesRouter.patch("/case-instances/:id/stage-history/current/backdate", 
 });
 
 caseInstancesRouter.delete("/case-instances/:id", async (req, res) => {
+  const instance = await prisma.caseInstance.findUnique({ where: { id: req.params.id } });
+  if (!instance) return res.status(404).json({ error: "Case instance not found." });
+
   await prisma.caseInstance.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });
