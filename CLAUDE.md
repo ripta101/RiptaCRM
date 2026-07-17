@@ -5,7 +5,7 @@ All fields the frontline user records, and displays are configurable by a busine
 
 # About Me
 
-I am a technical engineer. My customer will be small to medium business company, needing CRM application. I prefer clear, jargon-free output.
+I am a technical engineer. I prefer clear, jargon-free output.
 
 # Rules
 
