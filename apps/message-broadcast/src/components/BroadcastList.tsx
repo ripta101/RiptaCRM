@@ -16,6 +16,7 @@ import {
 import type { MessageBroadcastSummary } from "@riptacrm/shared-types";
 import { listBroadcasts } from "../api/client";
 import { getBroadcastStatus, type BroadcastStatus } from "../lib/broadcastStatus";
+import { formatBroadcastDateTime } from "../lib/formatDateTime";
 
 interface BroadcastListProps {
   onSelect: (id: string) => void;
@@ -95,8 +96,8 @@ export function BroadcastList({ onSelect, onNew }: BroadcastListProps) {
                     <TableCell>
                       <Chip size="small" color={STATUS_COLOR[status]} label={status} />
                     </TableCell>
-                    <TableCell>{new Date(b.startAt).toLocaleString()}</TableCell>
-                    <TableCell>{new Date(b.endAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatBroadcastDateTime(b.startAt)}</TableCell>
+                    <TableCell>{formatBroadcastDateTime(b.endAt)}</TableCell>
                   </TableRow>
                 );
               })}
