@@ -69,9 +69,8 @@ export default function CustomerLookupModule({
         return;
       }
       setView({ mode: "browse", results });
-      setSelectedCustomerId(null);
-      setDetail(null);
       setDetailError(null);
+      await handleSelectCustomer(results[0].id);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Search failed.");
     } finally {

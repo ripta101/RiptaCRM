@@ -65,9 +65,8 @@ export function InteractionWorkspace({
         return;
       }
       setContent({ kind: "browse", results });
-      setCandidateId(null);
-      setCandidateDetail(null);
       setCandidateError(null);
+      await handleSelectCandidate(results[0].id);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Search failed.");
     } finally {
