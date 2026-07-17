@@ -27,10 +27,10 @@ export function DashboardPage() {
           Dashboard
         </Typography>
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <RecentConfigChangesWidget />
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <BroadcastPanelWidget />
           </Grid>
         </Grid>
@@ -58,17 +58,17 @@ export function DashboardPage() {
         </Button>
       </Box>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <OpenCasesWidget />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12, sm: 8 }}>
               <RecentActivityWidget />
             </Grid>
           </Grid>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <BroadcastPanelWidget />
         </Grid>
       </Grid>
