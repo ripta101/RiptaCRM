@@ -34,6 +34,20 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      command: "pnpm --filter @riptacrm/message-broadcast-api run test:e2e:serve",
+      cwd: "..",
+      url: "http://localhost:4313/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: "pnpm --filter @riptacrm/message-broadcast run dev",
+      cwd: "..",
+      url: "http://localhost:5176",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
       command: "pnpm --filter @riptacrm/customer run dev",
       cwd: "..",
       url: "http://localhost:5174",

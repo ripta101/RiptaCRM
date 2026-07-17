@@ -7,6 +7,7 @@ import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ChatIcon from "@mui/icons-material/Chat";
 import EmailIcon from "@mui/icons-material/Email";
 import GavelIcon from "@mui/icons-material/Gavel";
+import CampaignIcon from "@mui/icons-material/Campaign";
 import { useAuth } from "@riptacrm/auth-client";
 import { useInteractions } from "../interactions/InteractionsContext";
 import { adminNavItems, frontlineNavItems } from "./navItems";
@@ -18,6 +19,7 @@ const ICONS: Record<string, ComponentType> = {
   webchat: ChatIcon,
   email: EmailIcon,
   "case-management": GavelIcon,
+  broadcast: CampaignIcon,
 };
 
 export const SIDE_MENU_WIDTH = 240;

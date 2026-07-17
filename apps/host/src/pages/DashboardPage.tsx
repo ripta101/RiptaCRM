@@ -5,6 +5,7 @@ import { useInteractions } from "../interactions/InteractionsContext";
 import { OpenCasesWidget } from "../shell/widgets/OpenCasesWidget";
 import { RecentActivityWidget } from "../shell/widgets/RecentActivityWidget";
 import { RecentConfigChangesWidget } from "../shell/widgets/RecentConfigChangesWidget";
+import { BroadcastPanelWidget } from "../shell/widgets/BroadcastPanelWidget";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -28,6 +29,9 @@ export function DashboardPage() {
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 8 }}>
             <RecentConfigChangesWidget />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <BroadcastPanelWidget />
           </Grid>
         </Grid>
       </Box>
@@ -54,11 +58,18 @@ export function DashboardPage() {
         </Button>
       </Box>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <OpenCasesWidget />
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <OpenCasesWidget />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <RecentActivityWidget />
+            </Grid>
+          </Grid>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 8 }}>
-          <RecentActivityWidget />
+        <Grid size={{ xs: 12, md: 4 }}>
+          <BroadcastPanelWidget />
         </Grid>
       </Grid>
     </Box>

@@ -18,3 +18,10 @@ declare module "caseManagement/CaseManagementModule" {
   const CaseManagementModule: ComponentType;
   export default CaseManagementModule;
 }
+
+declare module "messageBroadcast/MessageBroadcastModule" {
+  import type { ComponentType } from "react";
+
+  const MessageBroadcastModule: ComponentType;
+  export default MessageBroadcastModule;
+}

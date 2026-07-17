@@ -41,6 +41,8 @@ Follow standard MFE monorepo project structure:
   - `case-management` - Case Management MFE (admin config for case types/stages/SLA)
   - `customer-api` - BFF for the Customer module (Express + Prisma + SQLite)
   - `case-management-api` - BFF for the Case Management module (Express + Prisma + SQLite + SLA scheduler)
+  - `message-broadcast` - Message Broadcast MFE (admin composer/list for broadcast announcements)
+  - `message-broadcast-api` - BFF for the Message Broadcast module (Express + Prisma + SQLite)
 - packages/ - shared libraries across MFEs
   - `shared-types` - cross-cutting TS types/DTOs, consumed by every app
   - `auth-client` - shared auth context/provider, consumed by the host

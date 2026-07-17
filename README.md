@@ -13,6 +13,7 @@ The application frame everything else runs inside. Two roles, two different expe
 - Routes are guarded by role — each menu's pages are only reachable by the role they belong to
 - `Worklist`, `IT Support`, `Settings`, `Profile`, and the WebChat / Email configuration pages are placeholder "coming soon" screens for now
 - The frontline Dashboard's "Open Cases" widget shows a live count of cases assigned to the logged-in user, sourced from the Case Management module
+- Both roles' Dashboards show an "Announcements" panel on the right, sourced from the Message Broadcast module and auto-refreshing
 
 ### Customer
 Find a customer and see their history. Opens inside a new interaction tab (not a standalone menu item).
@@ -38,6 +39,14 @@ Backend-only module — issues sessions for the Host's login screen; not a modul
 - The Host decodes and checks the token's expiry client-side (no network call on every page load); the token is what future SAML/SSO integration would replace or bridge into, without needing to change how the rest of the app consumes `useAuth()`
 - Seeded with two demo users (`test`/`Passw0rd154@` frontline, `admin`/`Passw0rd154@` business admin) — no user-management UI yet, that's a future feature
 
+### Message Broadcast
+Lets a business admin push announcements to logged-in users.
+- Compose a title and a rich HTML message body (bold/italic/lists/links, plus an emoji picker) via a WYSIWYG editor
+- Target one or more profiles (today: frontline, business admin — easy to extend as more profiles are added later)
+- Set a validity window (start/end date and time); optionally set a priority (Low/Normal/High) to control display order — unprioritized messages sort by post date, newest first
+- Displays on the right-hand side of every logged-in user's Dashboard, filtered to their profile, and auto-refreshes every 45 seconds via polling — no page reload needed to see a new announcement or have an expired one disappear
+- Admins can edit a broadcast or cancel it early from the admin list; a message stops displaying the moment its validity window ends or it's canceled
+
 `packages/` holds code shared across modules (UI theme, shared types, auth) — not a module in its own right.
 
 See [docs/architecture.md](docs/architecture.md) for a diagram of how the modules connect (Module Federation wiring, REST calls between services, ports).
@@ -46,10 +55,11 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
 
 - React + Vite, composed at runtime via Module Federation
 - MUI (Material UI) component library
-- Express + Prisma + SQLite for the Customer, Case Management, and Auth modules' backends
+- Express + Prisma + SQLite for the Customer, Case Management, Auth, and Message Broadcast modules' backends
 - jsonwebtoken + bcryptjs for the Auth module's JWT session tokens and password hashing
 - node-cron for the Case Management module's SLA scheduler
 - @xyflow/react for the Case Management module's stage-transition flow diagram; @dnd-kit for drag-and-drop stage reordering
+- TipTap for the Message Broadcast composer's rich text editing; emoji-picker-react for its emoji picker; sanitize-html to strip unsafe HTML from broadcast messages before they're stored
 - Turborepo + pnpm workspaces
 
 ## Prerequisites (one-time setup)
@@ -77,7 +87,13 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
    pnpm --filter @riptacrm/auth-api db:migrate
    ```
    Applies the migration and seeds the two demo users (`test`/`Passw0rd154@`, `admin`/`Passw0rd154@`) with bcrypt-hashed passwords.
-6. (Optional) `cp apps/host/.env.example apps/host/.env` — only needed if you want to point the Host at a non-default Auth API URL.
+6. Set up the Message Broadcast module's database:
+   ```
+   cp apps/message-broadcast-api/.env.example apps/message-broadcast-api/.env
+   pnpm --filter @riptacrm/message-broadcast-api db:migrate
+   ```
+   Applies the migration and seeds a few sample announcements (active, scheduled, expired, and canceled) so the Dashboard panel and admin list have something to show right away.
+7. (Optional) `cp apps/host/.env.example apps/host/.env` — only needed if you want to point the Host at a non-default Auth API or Message Broadcast API URL.
 
 ## Starting the Application
 
@@ -85,15 +101,17 @@ From the project root:
 ```
 pnpm dev
 ```
-This starts all six services together:
+This starts all eight services together:
 - Host — http://localhost:5173
 - Customer module — http://localhost:5174
 - Customer API — http://localhost:4310
 - Case Management module — http://localhost:5175
 - Case Management API — http://localhost:4311
 - Auth API — http://localhost:4312
+- Message Broadcast module — http://localhost:5176
+- Message Broadcast API — http://localhost:4313
 
-The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel, and the Host calls the Auth API to log in — start them all (`pnpm dev` does this automatically) for the full app to work.
+The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel, the Host calls the Auth API to log in, and the Host calls the Message Broadcast API to show and poll the Dashboard's Announcements panel — start them all (`pnpm dev` does this automatically) for the full app to work.
 
 Open http://localhost:5173 and log in with one of:
 - `test` / `Passw0rd154@` — frontline user
@@ -103,13 +121,14 @@ Open http://localhost:5173 and log in with one of:
 
 ## Changing the Database Schema
 
-The Customer, Case Management, and Auth modules' databases all use [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in each app's `prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command (substitute the package name for whichever module you're working on), on any machine:
+The Customer, Case Management, Auth, and Message Broadcast modules' databases all use [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in each app's `prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command (substitute the package name for whichever module you're working on), on any machine:
 
 - **You pulled code that includes new migrations** (someone else changed the schema): run
   ```
   pnpm --filter @riptacrm/customer-api db:migrate
   pnpm --filter @riptacrm/case-management-api db:migrate
   pnpm --filter @riptacrm/auth-api db:migrate
+  pnpm --filter @riptacrm/message-broadcast-api db:migrate
   ```
   This applies only the migrations your local database doesn't have yet.
 - **You're changing the schema yourself**: edit the app's `prisma/schema.prisma`, then run the same `db:migrate` command. Prisma detects the change, generates a new migration file, and applies it locally. Commit the new `prisma/migrations/<timestamp>_<name>/` folder along with your code change so everyone else picks it up next time they run `db:migrate`.
@@ -120,6 +139,6 @@ The Customer, Case Management, and Auth modules' databases all use [Prisma Migra
 
 ## Stopping the Application
 
-Press `Ctrl+C` in the terminal running `pnpm dev` — this stops all six services together.
+Press `Ctrl+C` in the terminal running `pnpm dev` — this stops all eight services together.
 
 If you started any service in its own separate terminal (e.g. `pnpm --filter @riptacrm/host dev`), press `Ctrl+C` in each of those terminals individually.

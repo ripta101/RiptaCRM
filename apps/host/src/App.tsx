@@ -9,6 +9,7 @@ import { ITSupportPage } from "./pages/ITSupportPage";
 import { WebChatConfigPage } from "./pages/WebChatConfigPage";
 import { EmailConfigPage } from "./pages/EmailConfigPage";
 import { CaseManagementConfigPage } from "./pages/CaseManagementConfigPage";
+import { MessageBroadcastConfigPage } from "./pages/MessageBroadcastConfigPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 
@@ -29,6 +30,7 @@ export function App() {
             <Route path="/config/webchat" element={<WebChatConfigPage />} />
             <Route path="/config/email" element={<EmailConfigPage />} />
             <Route path="/config/case-management" element={<CaseManagementConfigPage />} />
+            <Route path="/config/broadcasts" element={<MessageBroadcastConfigPage />} />
           </Route>
         </Route>
       </Route>
