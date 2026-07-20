@@ -34,7 +34,7 @@ import {
   listCaseInstances,
   transitionCaseInstance,
 } from "../api/client";
-import { DynamicFieldForm } from "./DynamicFieldForm";
+import { DynamicFieldForm, formatDateTime } from "@riptacrm/ui";
 
 interface CaseInstancesPanelProps {
   caseTypeId: string;
@@ -228,7 +228,7 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
                       {i.breached && <Chip size="small" color="error" label="Breached" />}
                     </Stack>
                   </TableCell>
-                  <TableCell>{new Date(i.slaDueAt).toLocaleString()}</TableCell>
+                  <TableCell>{formatDateTime(i.slaDueAt)}</TableCell>
                   <TableCell>{i.assignedToUserId ?? "—"}</TableCell>
                   <TableCell>{i.customerAccountId ?? "—"}</TableCell>
                   <TableCell>

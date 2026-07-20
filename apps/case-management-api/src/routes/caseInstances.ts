@@ -10,6 +10,7 @@ const SUMMARY_INCLUDE = {
   caseType: true,
   currentStage: true,
   stageHistory: { include: { stage: true } },
+  assignedQueue: true,
 } as const;
 
 const DETAIL_INCLUDE = {
@@ -56,13 +57,29 @@ caseInstancesRouter.post("/case-instances", async (req, res) => {
   const now = new Date();
   const slaDueAt = new Date(now.getTime() + firstStage.slaMinutes * 60 * 1000);
 
+  // Explicit assignedToUserId (the admin's manual test-instance flow) always wins — queue
+  // auto-routing only kicks in for the Lodge-a-Case flow, which sends lodgedByUserId instead.
+  let assignedToUserId = body.assignedToUserId?.trim() || null;
+  let assignedQueueId: string | null = null;
+  if (!assignedToUserId && body.lodgedByUserId?.trim() && firstStage.queueId) {
+    const membership = await prisma.queueMember.findUnique({
+      where: { queueId_userId: { queueId: firstStage.queueId, userId: body.lodgedByUserId.trim() } },
+    });
+    if (membership) {
+      assignedToUserId = body.lodgedByUserId.trim();
+    } else {
+      assignedQueueId = firstStage.queueId;
+    }
+  }
+
   const instance = await prisma.caseInstance.create({
     data: {
       caseTypeId: caseType.id,
       caseTypeVersionId: version.id,
       currentStageId: firstStage.id,
       customerAccountId: body.customerAccountId?.trim() || null,
-      assignedToUserId: body.assignedToUserId?.trim() || null,
+      assignedToUserId,
+      assignedQueueId,
       contactEmail: body.contactEmail?.trim() || null,
       stageHistory: {
         create: [{ stageId: firstStage.id, enteredAt: now, slaDueAt }],

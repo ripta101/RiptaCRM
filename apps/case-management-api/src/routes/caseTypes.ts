@@ -138,6 +138,7 @@ caseTypesRouter.post("/case-types/:id/versions/draft", async (req, res) => {
             displayOrder: s.displayOrder,
             positionX: s.positionX,
             positionY: s.positionY,
+            queueId: s.queueId,
             actions: {
               create: s.actions.map((a) => ({
                 trigger: a.trigger,
@@ -354,6 +355,11 @@ caseTypesRouter.post("/case-type-versions/:versionId/stages", async (req, res) =
     return res.status(400).json({ error: "key, name, and slaMinutes are required." });
   }
 
+  if (body.queueId) {
+    const queue = await prisma.queue.findUnique({ where: { id: body.queueId } });
+    if (!queue) return res.status(400).json({ error: "queueId does not match an existing queue." });
+  }
+
   // Default to an unoccupied spot in the flow diagram — new stages otherwise all land on
   // top of each other at (0, 0), making them indistinguishable/unclickable on the canvas
   // until manually dragged apart.
@@ -370,6 +376,7 @@ caseTypesRouter.post("/case-type-versions/:versionId/stages", async (req, res) =
         displayOrder: body.displayOrder ?? 0,
         positionX: body.positionX ?? existingStageCount * 220,
         positionY: body.positionY ?? 120,
+        queueId: body.queueId ?? null,
       },
       include: { actions: true },
     });
@@ -382,6 +389,7 @@ caseTypesRouter.post("/case-type-versions/:versionId/stages", async (req, res) =
       displayOrder: stage.displayOrder,
       positionX: stage.positionX,
       positionY: stage.positionY,
+      queueId: stage.queueId,
       actions: [],
       allowedNextStages: [],
     });
@@ -398,6 +406,12 @@ caseTypesRouter.patch("/stages/:stageId", async (req, res) => {
   if (guard.error) return res.status(guard.error.status).json(guard.error.body);
 
   const body = req.body as Partial<UpdateStageInput>;
+
+  if (body.queueId) {
+    const queue = await prisma.queue.findUnique({ where: { id: body.queueId } });
+    if (!queue) return res.status(400).json({ error: "queueId does not match an existing queue." });
+  }
+
   const stage = await prisma.stageDefinition.update({
     where: { id: req.params.stageId },
     data: {
@@ -407,6 +421,7 @@ caseTypesRouter.patch("/stages/:stageId", async (req, res) => {
       displayOrder: body.displayOrder,
       positionX: body.positionX,
       positionY: body.positionY,
+      queueId: body.queueId !== undefined ? body.queueId || null : undefined,
     },
     include: { actions: true, transitionsFrom: true },
   });
@@ -419,6 +434,7 @@ caseTypesRouter.patch("/stages/:stageId", async (req, res) => {
     displayOrder: stage.displayOrder,
     positionX: stage.positionX,
     positionY: stage.positionY,
+    queueId: stage.queueId,
     actions: [],
     allowedNextStages: stage.transitionsFrom.map((t) => ({ id: t.id, toStageId: t.toStageId })),
   });

@@ -4,6 +4,8 @@ import { caseTypesRouter } from "./routes/caseTypes";
 import { caseInstancesRouter } from "./routes/caseInstances";
 import { actionLogRouter } from "./routes/actionLog";
 import { schedulerRouter } from "./routes/scheduler";
+import { queuesRouter } from "./routes/queues";
+import { usersRouter } from "./routes/users";
 
 export function createApp() {
   const app = express();
@@ -24,6 +26,8 @@ export function createApp() {
   app.use("/api", caseInstancesRouter);
   app.use("/api", actionLogRouter);
   app.use("/api", schedulerRouter);
+  app.use("/api", queuesRouter);
+  app.use("/api", usersRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found." });

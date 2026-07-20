@@ -24,12 +24,14 @@ export interface CustomerLookupModuleProps {
   onCustomerIdentified?: (customer: CustomerSummary) => void;
   closeRequested?: boolean;
   onInteractionEnded?: () => void;
+  currentUserId?: string | null;
 }
 
 export default function CustomerLookupModule({
   onCustomerIdentified,
   closeRequested,
   onInteractionEnded,
+  currentUserId,
 }: CustomerLookupModuleProps) {
   const [searchParams, setSearchParams] = useState<CustomerSearchParams>({});
   const [view, setView] = useState<View>({ mode: "search" });
@@ -134,6 +136,10 @@ export default function CustomerLookupModule({
     }
   }
 
+  function handleCustomerUpdated(detail: CustomerDetail) {
+    setConfirmedCustomers((prev) => prev.map((c) => (c.id === detail.id ? detail : c)));
+  }
+
   function addOrActivateCustomer(customer: CustomerDetail) {
     setConfirmedCustomers((prev) =>
       prev.some((c) => c.id === customer.id) ? prev : [...prev, customer],
@@ -189,8 +195,10 @@ export default function CustomerLookupModule({
         confirmedCustomers={confirmedCustomers}
         activeCustomerId={activeCustomerId}
         activeMenuItem={activeMenuItem}
+        currentUserId={currentUserId ?? null}
         onSelectCustomerMenu={handleSelectCustomerMenu}
         onCustomerAdded={addOrActivateCustomer}
+        onCustomerUpdated={handleCustomerUpdated}
         onWrapUp={() => setView({ mode: "wrapup" })}
       />
     );

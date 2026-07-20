@@ -7,6 +7,8 @@ import type {
   CaseType as PrismaCaseType,
   CaseTypeVersion as PrismaCaseTypeVersion,
   FieldDefinition as PrismaFieldDefinition,
+  Queue as PrismaQueue,
+  QueueMember as PrismaQueueMember,
   StageDefinition as PrismaStageDefinition,
   StageTransition as PrismaStageTransition,
 } from "../../generated/prisma";
@@ -22,6 +24,7 @@ import type {
   CaseTypeVersionSummary,
   EmailActionConfig,
   FieldDefinition,
+  Queue,
   StageDefinition,
 } from "@riptacrm/shared-types";
 
@@ -61,6 +64,7 @@ export function toStageDefinition(
     displayOrder: s.displayOrder,
     positionX: s.positionX,
     positionY: s.positionY,
+    queueId: s.queueId,
     actions: s.actions.map(toActionDefinition),
     allowedNextStages: s.transitionsFrom.map((t) => ({ id: t.id, toStageId: t.toStageId })),
   };
@@ -118,6 +122,7 @@ type CaseInstanceWithRelations = PrismaCaseInstance & {
   caseType: PrismaCaseType;
   currentStage: PrismaStageDefinition;
   stageHistory: (PrismaCaseStageHistory & { stage: PrismaStageDefinition })[];
+  assignedQueue: PrismaQueue | null;
 };
 
 function currentStageHistory(instance: CaseInstanceWithRelations) {
@@ -136,6 +141,8 @@ export function toCaseInstanceSummary(instance: CaseInstanceWithRelations): Case
     currentStageName: instance.currentStage.name,
     customerAccountId: instance.customerAccountId,
     assignedToUserId: instance.assignedToUserId,
+    assignedQueueId: instance.assignedQueueId,
+    assignedQueueName: instance.assignedQueue?.name ?? null,
     contactEmail: instance.contactEmail,
     status: instance.status as CaseInstanceSummary["status"],
     createdAt: instance.createdAt.toISOString(),
@@ -199,6 +206,16 @@ export function coerceFieldValue(
 export function toStoredFieldValue(value: string | number | boolean | null): string | null {
   if (value === null || value === undefined) return null;
   return String(value);
+}
+
+export function toQueue(q: PrismaQueue & { members: PrismaQueueMember[] }): Queue {
+  return {
+    id: q.id,
+    name: q.name,
+    memberUserIds: q.members.map((m) => m.userId),
+    createdAt: q.createdAt.toISOString(),
+    updatedAt: q.updatedAt.toISOString(),
+  };
 }
 
 export function toActionLogEntry(entry: PrismaActionLogEntry): ActionLogEntry {

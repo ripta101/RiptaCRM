@@ -54,6 +54,34 @@ export async function publishVersion(versionId: string): Promise<void> {
   await request(`/api/case-type-versions/${versionId}/publish`, { method: "POST" });
 }
 
+interface StageRef {
+  id: string;
+  key: string;
+  displayOrder: number;
+}
+
+/** Returns the version's stages so a test can find e.g. the first stage by displayOrder. */
+export async function getVersionStages(versionId: string): Promise<StageRef[]> {
+  const version = await request<{ stages: StageRef[] }>(`/api/case-type-versions/${versionId}`);
+  return version.stages;
+}
+
+export async function setStageQueue(stageId: string, queueId: string): Promise<void> {
+  await request(`/api/stages/${stageId}`, { method: "PATCH", body: JSON.stringify({ queueId }) });
+}
+
+export async function createThrowawayQueue(name: string): Promise<{ id: string }> {
+  return request<{ id: string }>("/api/queues", { method: "POST", body: JSON.stringify({ name }) });
+}
+
+export async function deleteQueue(queueId: string): Promise<void> {
+  await request(`/api/queues/${queueId}`, { method: "DELETE" });
+}
+
+export async function addQueueMember(queueId: string, userId: string): Promise<void> {
+  await request(`/api/queues/${queueId}/members`, { method: "POST", body: JSON.stringify({ userId }) });
+}
+
 export interface CaseInstanceRef {
   id: string;
   currentStageId: string;
@@ -111,6 +139,14 @@ export async function createCaseInstance(caseTypeId: string): Promise<CaseInstan
 
 export async function deleteCaseInstance(instanceId: string): Promise<void> {
   await request(`/api/case-instances/${instanceId}`, { method: "DELETE" });
+}
+
+/** Deletes every case instance for a case type, so the case type itself can then be deleted
+ * (case types can't be deleted while instances reference them). */
+export async function deleteCaseInstancesForCaseType(caseTypeId: string): Promise<void> {
+  const qs = new URLSearchParams({ caseTypeId });
+  const { results } = await request<{ results: { id: string }[] }>(`/api/case-instances?${qs.toString()}`);
+  await Promise.all(results.map((i) => deleteCaseInstance(i.id)));
 }
 
 export async function backdateCurrentStage(instanceId: string, slaDueAt: Date): Promise<void> {

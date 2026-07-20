@@ -118,3 +118,96 @@ describe("POST /api/case-instances/:id/transitions", () => {
     }
   });
 });
+
+describe("POST /api/case-instances — queue routing", () => {
+  let caseTypeId: string;
+  let stageId: string;
+  let queueId: string;
+
+  beforeEach(async () => {
+    const caseType = await prisma.caseType.create({
+      data: {
+        key: `test-queue-routing-${randomUUID()}`,
+        name: "Test Queue Routing Case Type",
+        versions: {
+          create: {
+            versionNumber: 1,
+            status: "PUBLISHED",
+            publishedAt: new Date(),
+            stages: { create: [{ key: "start", name: "Start", slaMinutes: 60, displayOrder: 0 }] },
+          },
+        },
+      },
+      include: { versions: { include: { stages: true } } },
+    });
+    caseTypeId = caseType.id;
+    stageId = caseType.versions[0].stages[0].id;
+
+    const queue = await prisma.queue.create({ data: { name: `Test Queue ${randomUUID()}` } });
+    queueId = queue.id;
+  });
+
+  afterEach(async () => {
+    await prisma.caseInstance.deleteMany({ where: { caseTypeId } });
+    await prisma.caseType.delete({ where: { id: caseTypeId } });
+    await prisma.queue.delete({ where: { id: queueId } }).catch(() => undefined);
+  });
+
+  it("leaves a case unassigned when the stage has no queue, even with lodgedByUserId sent", async () => {
+    const res = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-lodging" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.assignedToUserId).toBeNull();
+    expect(res.body.assignedQueueId).toBeNull();
+  });
+
+  it("auto-assigns to the lodging user when they're a member of the stage's queue", async () => {
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId } });
+    await prisma.queueMember.create({ data: { queueId, userId: "user-lodging" } });
+
+    const res = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-lodging" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.assignedToUserId).toBe("user-lodging");
+    expect(res.body.assignedQueueId).toBeNull();
+  });
+
+  it("routes to the queue when the lodging user is not a member", async () => {
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId } });
+
+    const res = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.assignedToUserId).toBeNull();
+    expect(res.body.assignedQueueId).toBe(queueId);
+  });
+
+  it("an explicit assignedToUserId always wins over queue routing", async () => {
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId } });
+    // Deliberately NOT a member — proves the explicit value isn't second-guessed.
+
+    const res = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, assignedToUserId: "user-explicit", lodgedByUserId: "user-not-a-member" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.assignedToUserId).toBe("user-explicit");
+    expect(res.body.assignedQueueId).toBeNull();
+  });
+
+  it("leaves a case unassigned when lodgedByUserId is absent, even with a queue on the stage", async () => {
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId } });
+
+    const res = await request(app).post("/api/case-instances").send({ caseTypeId });
+
+    expect(res.status).toBe(201);
+    expect(res.body.assignedToUserId).toBeNull();
+    expect(res.body.assignedQueueId).toBeNull();
+  });
+});

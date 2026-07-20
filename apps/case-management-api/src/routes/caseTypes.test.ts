@@ -154,3 +154,83 @@ describe("DELETE /api/case-type-versions/:versionId", () => {
     expect(second.status).toBe(204);
   });
 });
+
+describe("Stage queueId", () => {
+  let caseTypeId: string;
+  let draftVersionId: string;
+  let queueId: string;
+
+  beforeEach(async () => {
+    const queue = await prisma.queue.create({ data: { name: `Test Queue ${randomUUID()}` } });
+    queueId = queue.id;
+
+    const caseType = await prisma.caseType.create({
+      data: {
+        key: `test-stage-queue-${randomUUID()}`,
+        name: "Test Stage Queue Case Type",
+        versions: { create: { versionNumber: 1, status: "DRAFT" } },
+      },
+      include: { versions: true },
+    });
+    caseTypeId = caseType.id;
+    draftVersionId = caseType.versions[0].id;
+  });
+
+  afterEach(async () => {
+    await prisma.caseType.delete({ where: { id: caseTypeId } }).catch(() => undefined);
+    await prisma.queue.delete({ where: { id: queueId } }).catch(() => undefined);
+  });
+
+  it("creates a stage with a queueId and round-trips it", async () => {
+    const res = await request(app)
+      .post(`/api/case-type-versions/${draftVersionId}/stages`)
+      .send({ key: "s", name: "S", slaMinutes: 60, queueId });
+    expect(res.status).toBe(201);
+    expect(res.body.queueId).toBe(queueId);
+  });
+
+  it("rejects an invalid queueId on stage create", async () => {
+    const res = await request(app)
+      .post(`/api/case-type-versions/${draftVersionId}/stages`)
+      .send({ key: "s", name: "S", slaMinutes: 60, queueId: "does-not-exist" });
+    expect(res.status).toBe(400);
+  });
+
+  it("updates a stage's queueId and can clear it", async () => {
+    const created = await request(app)
+      .post(`/api/case-type-versions/${draftVersionId}/stages`)
+      .send({ key: "s", name: "S", slaMinutes: 60 });
+
+    const updated = await request(app).patch(`/api/stages/${created.body.id}`).send({ queueId });
+    expect(updated.status).toBe(200);
+    expect(updated.body.queueId).toBe(queueId);
+
+    const cleared = await request(app).patch(`/api/stages/${created.body.id}`).send({ queueId: "" });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.queueId).toBeNull();
+  });
+
+  it("rejects an invalid queueId on stage update", async () => {
+    const created = await request(app)
+      .post(`/api/case-type-versions/${draftVersionId}/stages`)
+      .send({ key: "s", name: "S", slaMinutes: 60 });
+
+    const res = await request(app).patch(`/api/stages/${created.body.id}`).send({ queueId: "does-not-exist" });
+    expect(res.status).toBe(400);
+  });
+
+  it("carries a stage's queueId forward when a draft is cloned from a published version", async () => {
+    await request(app).post(`/api/case-type-versions/${draftVersionId}/stages`).send({
+      key: "s",
+      name: "S",
+      slaMinutes: 60,
+      queueId,
+    });
+    await request(app).post(`/api/case-type-versions/${draftVersionId}/publish`);
+
+    const newDraft = await request(app).post(`/api/case-types/${caseTypeId}/versions/draft`);
+    expect(newDraft.status).toBe(201);
+    const clonedStage = newDraft.body.stages.find((s: { key: string }) => s.key === "s");
+    expect(clonedStage.queueId).toBe(queueId);
+  });
+});

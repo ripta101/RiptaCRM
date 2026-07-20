@@ -38,7 +38,8 @@ graph LR
     CustomerMFE -- "HTTP REST" --> CustomerAPI
     CaseMFE -- "HTTP REST" --> CaseAPI
     BroadcastMFE -- "HTTP REST" --> BroadcastAPI
-    CustomerAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> CaseAPI
+    CustomerAPI -- "HTTP REST (server-to-server:<br/>reads fail soft, writes don't)" --> CaseAPI
+    CaseAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> AuthAPI
     Host -- "HTTP REST (direct,<br/>OpenCasesWidget only)" --> CaseAPI
     Host -- "HTTP REST (login)" --> AuthAPI
     Host -- "HTTP REST (direct,<br/>BroadcastPanelWidget only)" --> BroadcastAPI
@@ -73,7 +74,7 @@ graph LR
 | Message Broadcast MFE | React + Vite, Module Federation **remote** (`messageBroadcast`) | 5176 | Admin composer + list UI for broadcast announcements |
 | customer-api | Express + Prisma + SQLite | 4310 | Customer & interaction-history REST API |
 | case-management-api | Express + Prisma + SQLite + node-cron | 4311 | Case type / workflow / instance / SLA REST API + SLA scheduler |
-| auth-api | Express + Prisma + SQLite | 4312 | Login / JWT issuance REST API — bcrypt-hashed passwords, no other endpoints |
+| auth-api | Express + Prisma + SQLite | 4312 | Login / JWT issuance REST API — bcrypt-hashed passwords; also a minimal `GET /api/users` read endpoint used by case-management-api's queue-member picker |
 | message-broadcast-api | Express + Prisma + SQLite | 4313 | Broadcast announcement CRUD + role/validity-filtered active-list REST API |
 
 ## Shared packages
@@ -86,7 +87,7 @@ graph LR
 
 ## The two asymmetric edges
 
-Every other cross-service call is straightforward — each MFE talks only to its own backend, and `customer-api` calls `case-management-api` server-to-server to embed a customer's open cases into `GET /api/customers/:id`.
+Every other cross-service call is straightforward — each MFE talks only to its own backend, and cross-service data flows through the caller's own backend as a server-to-server proxy. `customer-api` calls `case-management-api` server-to-server both to embed a customer's open cases into `GET /api/customers/:id` (read, fails soft) and — for the Customer module's "Lodge a Case" flow — to list lodgeable case types, fetch a case type version's fields, and create the case instance itself (`POST /api/case-instances`, the first *write* proxy in the codebase; deliberately **not** fail-soft, since a write failure has to reach the user as a real error, not get swallowed into a fake success). Separately, `case-management-api` calls `auth-api` server-to-server (`GET /api/users`, fails soft to an empty list) so its Queue admin screen can offer a real user picker instead of free-typed IDs.
 
 The Host's Dashboard has two widgets that are the exception, for the same underlying reason: **"Open Cases" widget** calls `case-management-api` directly from the browser (`GET /api/case-instances?assignedToUserId=...&status=OPEN`), and **"Announcements" (`BroadcastPanelWidget`)** calls `message-broadcast-api` directly (`GET /api/broadcasts/active?role=...`) — both bypass their MFE and any other backend entirely. This is intentional in both cases — the data each widget needs (cases assigned to the logged-in user; announcements active for the logged-in user's role) isn't scoped to a specific customer or record, so routing either through `customer-api` or the Case Management/Message Broadcast MFEs wouldn't make sense. Don't "fix" either of these into a Module Federation call or a proxy without checking why it's a direct call first.
 
@@ -99,3 +100,7 @@ Each API owns its own isolated SQLite database via its own Prisma schema — the
 ## Message Broadcast: interval polling, not long-polling or WebSockets
 
 `BroadcastPanelWidget` re-fetches `GET /api/broadcasts/active?role=...` on a 45-second `setInterval`, not via long-polling or a WebSocket — this is the first (and so far only) auto-refreshing UI in the codebase. Interval polling was chosen deliberately: every other piece of client-server communication in this app is a one-shot REST call, so a plain timer keeps the same mental model, and because each tick is a fresh, stateless request, there's no open-connection state to track or recover if it drops — unlike long-polling, which needs its own "resume polling if nothing came back for a while" logic. `message-broadcast-api` has no server-side auth check on `/active` (matching every other backend in this codebase — see below), so it's a plain unauthenticated poll, not a subscription.
+
+## Queues: auto-assign or route, decided server-side at lodge time
+
+A `Queue` (`case-management-api`) is just a name plus a list of member user ids (plain strings, unvalidated — `case-management-api` has no `User` model of its own; membership is checked, never joined, against `auth-api`'s data). A `StageDefinition` can optionally have a `queueId`. When the Customer module's "Lodge a Case" form calls `POST /api/case-instances` with a `lodgedByUserId` (the logged-in frontline user's id, threaded in from the Host — the Customer MFE has no `@riptacrm/auth-client` dependency of its own, matching every other MFE), `case-management-api` looks at the new case's starting stage: no queue on the stage → unchanged, unassigned; queue present and the lodging user is a member → auto-assigned to them; queue present and they're not a member → the case's `assignedQueueId` is set instead of `assignedToUserId`, and the response carries the queue's name back so the UI can tell the user their case was routed rather than claimed. An explicit `assignedToUserId` in the request (the only way the admin's "Create Test Case Instance" screen has ever populated assignment) always wins over this logic and skips it entirely — `lodgedByUserId` is a new, separate field that only the Lodge-a-Case flow sends.

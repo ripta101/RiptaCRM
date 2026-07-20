@@ -6,6 +6,7 @@ import {
   Checkbox,
   Chip,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -18,8 +19,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
-import type { StageDefinition } from "@riptacrm/shared-types";
-import { createStage, deleteStage, updateStage } from "../api/client";
+import type { Queue, StageDefinition } from "@riptacrm/shared-types";
+import { createStage, deleteStage, listQueues, updateStage } from "../api/client";
 
 interface StageListEditorProps {
   versionId: string;
@@ -31,29 +32,36 @@ interface StageListEditorProps {
 function StageRow({
   stage,
   stageNameById,
+  queues,
   editable,
   onChanged,
   onError,
 }: {
   stage: StageDefinition;
   stageNameById: Map<string, string>;
+  queues: Queue[];
   editable: boolean;
   onChanged: () => void;
   onError: (msg: string) => void;
 }) {
   const [slaMinutes, setSlaMinutes] = useState(String(stage.slaMinutes));
   const [isTerminal, setIsTerminal] = useState(stage.isTerminal);
+  const [queueId, setQueueId] = useState(stage.queueId ?? "");
 
   useEffect(() => {
     setSlaMinutes(String(stage.slaMinutes));
     setIsTerminal(stage.isTerminal);
-  }, [stage.slaMinutes, stage.isTerminal]);
+    setQueueId(stage.queueId ?? "");
+  }, [stage.slaMinutes, stage.isTerminal, stage.queueId]);
 
-  const dirty = Number(slaMinutes) !== stage.slaMinutes || isTerminal !== stage.isTerminal;
+  const dirty =
+    Number(slaMinutes) !== stage.slaMinutes || isTerminal !== stage.isTerminal || queueId !== (stage.queueId ?? "");
 
   async function handleSave() {
     try {
-      await updateStage(stage.id, { slaMinutes: Number(slaMinutes), isTerminal });
+      // queueId sent as "" (not undefined) when cleared — the backend treats an explicit ""
+      // as "unassign," and undefined as "leave whatever it already is untouched."
+      await updateStage(stage.id, { slaMinutes: Number(slaMinutes), isTerminal, queueId });
       onChanged();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to update stage.");
@@ -97,6 +105,26 @@ function StageRow({
         )}
       </TableCell>
       <TableCell>
+        {editable ? (
+          <TextField
+            select
+            size="small"
+            value={queueId}
+            onChange={(e) => setQueueId(e.target.value)}
+            sx={{ width: 160 }}
+          >
+            <MenuItem value="">No queue</MenuItem>
+            {queues.map((q) => (
+              <MenuItem key={q.id} value={q.id}>
+                {q.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : (
+          queues.find((q) => q.id === stage.queueId)?.name ?? "—"
+        )}
+      </TableCell>
+      <TableCell>
         {stage.allowedNextStages.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             —
@@ -127,8 +155,13 @@ function StageRow({
 }
 
 export function StageListEditor({ versionId, stages, editable, onChanged }: StageListEditorProps) {
-  const [form, setForm] = useState({ key: "", name: "", slaMinutes: "60" });
+  const [form, setForm] = useState({ key: "", name: "", slaMinutes: "60", queueId: "" });
   const [error, setError] = useState<string | null>(null);
+  const [queues, setQueues] = useState<Queue[]>([]);
+
+  useEffect(() => {
+    listQueues().then(setQueues).catch(() => undefined);
+  }, []);
 
   // Ordered to match the flow diagram's left-to-right layout, so dragging a node on the
   // canvas is the one and only way to reorder — no separate, driftable list ordering.
@@ -145,8 +178,9 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
         name: form.name.trim(),
         slaMinutes: Number(form.slaMinutes),
         displayOrder: stages.length,
+        queueId: form.queueId || undefined,
       });
-      setForm({ key: "", name: "", slaMinutes: "60" });
+      setForm({ key: "", name: "", slaMinutes: "60", queueId: "" });
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add stage.");
@@ -186,6 +220,21 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
               onChange={(e) => setForm((f) => ({ ...f, slaMinutes: e.target.value }))}
               sx={{ width: 140 }}
             />
+            <TextField
+              select
+              label="Queue (optional)"
+              size="small"
+              value={form.queueId}
+              onChange={(e) => setForm((f) => ({ ...f, queueId: e.target.value }))}
+              sx={{ width: 160 }}
+            >
+              <MenuItem value="">No queue</MenuItem>
+              {queues.map((q) => (
+                <MenuItem key={q.id} value={q.id}>
+                  {q.name}
+                </MenuItem>
+              ))}
+            </TextField>
             <Button variant="contained" disabled={!form.key.trim() || !form.name.trim()} onClick={handleAdd}>
               Add
             </Button>
@@ -201,6 +250,7 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
               <TableCell>Key</TableCell>
               <TableCell>SLA (minutes)</TableCell>
               <TableCell>Terminal</TableCell>
+              <TableCell>Queue</TableCell>
               <TableCell>Transitions</TableCell>
               <TableCell>Actions configured</TableCell>
               {editable && <TableCell align="right" />}
@@ -212,6 +262,7 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
                 key={s.id}
                 stage={s}
                 stageNameById={stageNameById}
+                queues={queues}
                 editable={editable}
                 onChanged={onChanged}
                 onError={setError}
@@ -219,7 +270,7 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
             ))}
             {stages.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <Typography color="text.secondary">No stages defined yet.</Typography>
                 </TableCell>
               </TableRow>

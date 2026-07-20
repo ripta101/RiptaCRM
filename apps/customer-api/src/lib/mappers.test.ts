@@ -56,6 +56,8 @@ describe("toCustomerDetail", () => {
           currentStageName: "Investigating",
           customerAccountId: "ACC-1001",
           assignedToUserId: "user-1",
+          assignedQueueId: null,
+          assignedQueueName: null,
           contactEmail: null,
           status: "OPEN",
           createdAt: new Date().toISOString(),

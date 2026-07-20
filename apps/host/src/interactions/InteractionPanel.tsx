@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import { useAuth } from "@riptacrm/auth-client";
 import type { InteractionTab } from "@riptacrm/shared-types";
 import { useInteractions } from "./InteractionsContext";
 import { CustomerLookupRemote } from "./CustomerLookupRemote";
@@ -9,6 +10,7 @@ interface InteractionPanelProps {
 
 export function InteractionPanel({ tab }: InteractionPanelProps) {
   const { renameTab, closeRequestedTabId, closeInteraction } = useInteractions();
+  const { user } = useAuth();
 
   switch (tab.kind) {
     case "customer-lookup":
@@ -19,6 +21,7 @@ export function InteractionPanel({ tab }: InteractionPanelProps) {
           }
           closeRequested={closeRequestedTabId === tab.id}
           onInteractionEnded={() => closeInteraction(tab.id)}
+          currentUserId={user?.id ?? null}
         />
       );
     default:

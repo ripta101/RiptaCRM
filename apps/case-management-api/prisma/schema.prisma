@@ -67,6 +67,8 @@ model StageDefinition {
   displayOrder      Int
   positionX         Int             @default(0)
   positionY         Int             @default(0)
+  queueId           String?
+  queue             Queue?          @relation(fields: [queueId], references: [id], onDelete: SetNull)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -77,6 +79,27 @@ model StageDefinition {
   transitionsTo   StageTransition[]  @relation("TransitionTo")
 
   @@unique([caseTypeVersionId, key])
+}
+
+model Queue {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members       QueueMember[]
+  stages        StageDefinition[]
+  caseInstances CaseInstance[]    @relation("AssignedQueue")
+}
+
+model QueueMember {
+  id        String   @id @default(uuid())
+  queueId   String
+  queue     Queue    @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  userId    String // plain, unvalidated — mirrors CaseInstance.assignedToUserId; auth-api owns Users
+  createdAt DateTime @default(now())
+
+  @@unique([queueId, userId])
 }
 
 model StageTransition {
@@ -115,6 +138,8 @@ model CaseInstance {
   currentStage      StageDefinition @relation("CurrentStage", fields: [currentStageId], references: [id])
   customerAccountId String?
   assignedToUserId  String?
+  assignedQueueId   String?
+  assignedQueue     Queue?          @relation("AssignedQueue", fields: [assignedQueueId], references: [id], onDelete: SetNull)
   contactEmail      String?
   status            String          @default("OPEN") // "OPEN" | "CLOSED"
   createdAt         DateTime        @default(now())

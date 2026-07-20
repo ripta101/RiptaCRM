@@ -9,12 +9,14 @@ interface CustomerLookupRemoteProps {
   onCustomerIdentified?: (customer: CustomerSummary) => void;
   closeRequested?: boolean;
   onInteractionEnded?: () => void;
+  currentUserId?: string | null;
 }
 
 export function CustomerLookupRemote({
   onCustomerIdentified,
   closeRequested,
   onInteractionEnded,
+  currentUserId,
 }: CustomerLookupRemoteProps) {
   return (
     <RemoteLoadErrorBoundary
@@ -36,6 +38,7 @@ export function CustomerLookupRemote({
           onCustomerIdentified={onCustomerIdentified}
           closeRequested={closeRequested}
           onInteractionEnded={onInteractionEnded}
+          currentUserId={currentUserId}
         />
       </Suspense>
     </RemoteLoadErrorBoundary>

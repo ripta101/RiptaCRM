@@ -12,6 +12,7 @@ import { CreateCustomerForm } from "./CreateCustomerForm";
 import { MasterDetailView } from "./MasterDetailView";
 import { CustomerDetailPanel } from "./CustomerDetailPanel";
 import { CustomerMenuBox, type CustomerMenuItem } from "./CustomerMenuBox";
+import { LodgeCaseForm } from "./LodgeCaseForm";
 
 type WorkspaceContent =
   | { kind: "menu" }
@@ -23,8 +24,10 @@ interface InteractionWorkspaceProps {
   confirmedCustomers: CustomerDetail[];
   activeCustomerId: string | null;
   activeMenuItem: CustomerMenuItem;
+  currentUserId: string | null;
   onSelectCustomerMenu: (customerId: string, item: CustomerMenuItem) => void;
   onCustomerAdded: (detail: CustomerDetail) => void;
+  onCustomerUpdated: (detail: CustomerDetail) => void;
   onWrapUp: () => void;
 }
 
@@ -32,8 +35,10 @@ export function InteractionWorkspace({
   confirmedCustomers,
   activeCustomerId,
   activeMenuItem,
+  currentUserId,
   onSelectCustomerMenu,
   onCustomerAdded,
+  onCustomerUpdated,
   onWrapUp,
 }: InteractionWorkspaceProps) {
   const [content, setContent] = useState<WorkspaceContent>({ kind: "menu" });
@@ -171,8 +176,8 @@ export function InteractionWorkspace({
           {content.kind === "menu" && activeCustomer && activeMenuItem === "amend" && (
             <ComingSoonContent title="Amend Customer" customer={activeCustomer} />
           )}
-          {content.kind === "menu" && activeCustomer && activeMenuItem === "complaint" && (
-            <ComingSoonContent title="Lodge a Complaint" customer={activeCustomer} />
+          {content.kind === "menu" && activeCustomer && activeMenuItem === "lodgeCase" && (
+            <LodgeCaseForm customer={activeCustomer} currentUserId={currentUserId} onCustomerUpdated={onCustomerUpdated} />
           )}
 
           {content.kind === "search" && (

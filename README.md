@@ -20,9 +20,9 @@ Find a customer and see their history. Opens inside a new interaction tab (not a
 - Search by first name, last name, phone number, date of birth, email, account ID, or company
 - View a customer's full profile: open cases (live from the Case Management module) and recent interactions
 - If a search finds no one, create a new customer on the spot — the form pre-fills from your search, and the account ID is generated automatically
-- Confirm a customer to open the interaction workspace: a box per confirmed customer (Customer Profile, Amend Customer, Lodge a Complaint) plus a generic box to search and confirm additional customers into the same interaction
+- Confirm a customer to open the interaction workspace: a box per confirmed customer (Customer Profile, Amend Customer, Lodge a Case) plus a generic box to search and confirm additional customers into the same interaction
 - Wrap up an interaction (via the Wrap Up button or the tab's close button) to review each confirmed customer's actions and add notes before ending it
-- "Lodge a Complaint" is still a placeholder — it doesn't yet create a real case in the Case Management module
+- "Lodge a Case" creates a real case instance in the Case Management module: pick from any published case type (shown as cards with their description), fill in that type's fields, and submit — the customer's account ID and email are attached automatically. If the case's starting stage has a queue assigned, the new case is auto-assigned to you if you're a member of that queue, otherwise it's routed to the queue and you're told so
 
 ### Case Management
 Lets a business admin design how cases work for the business, then runs the resulting SLA/automation engine.
@@ -32,11 +32,13 @@ Lets a business admin design how cases work for the business, then runs the resu
 - Every case type's design (fields + stages + SLA + actions) is versioned as one bundle: admins edit a **draft**, and nothing changes for cases already in progress until the admin explicitly **publishes** it — each case stays pinned to the exact version it was created under, forever
 - A background scheduler checks in-progress cases against their SLA due times and fires configured actions automatically
 - Includes a minimal admin-only screen for creating test case instances (not the polished frontline case-working experience — that's still to come) and an Action Log viewer
+- **Queues**: create named queues, add users as members (by picking from a list, not typing raw IDs), and assign a queue to any stage. When a frontline user lodges a case via the Customer module and the case's starting stage has a queue, the case auto-assigns to them if they're a member, or routes to the queue (visible in the case list's Assigned to column) if not
 
 ### Auth
 Backend-only module — issues sessions for the Host's login screen; not a module you see directly.
 - `POST /api/auth/login` validates a username/password against a database of users (bcrypt-hashed passwords) and returns a signed JWT + user profile
 - The Host decodes and checks the token's expiry client-side (no network call on every page load); the token is what future SAML/SSO integration would replace or bridge into, without needing to change how the rest of the app consumes `useAuth()`
+- `GET /api/users` lists users (no password data) — used by the Case Management module's queue-member picker, proxied server-to-server rather than called directly from any browser
 - Seeded with two demo users (`test`/`Passw0rd154@` frontline, `admin`/`Passw0rd154@` business admin) — no user-management UI yet, that's a future feature
 
 ### Message Broadcast

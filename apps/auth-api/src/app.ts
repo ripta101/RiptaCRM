@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { authRouter } from "./routes/auth";
+import { usersRouter } from "./routes/users";
 
 export function createApp() {
   const app = express();
@@ -18,6 +19,7 @@ export function createApp() {
   });
 
   app.use("/api", authRouter);
+  app.use("/api", usersRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found." });

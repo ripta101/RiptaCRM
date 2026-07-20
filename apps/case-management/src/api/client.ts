@@ -1,5 +1,6 @@
 import type {
   ActionLogEntry,
+  AddQueueMemberInput,
   AdvanceStageInput,
   CaseInstanceDetail,
   CaseInstanceSummary,
@@ -10,14 +11,18 @@ import type {
   CreateCaseInstanceInput,
   CreateCaseTypeInput,
   CreateFieldInput,
+  CreateQueueInput,
   CreateStageInput,
   CreateStageTransitionInput,
   FieldDefinition,
+  Queue,
   StageDefinition,
   StageTransition,
   UpdateActionInput,
   UpdateFieldInput,
+  UpdateQueueInput,
   UpdateStageInput,
+  UserSummary,
 } from "@riptacrm/shared-types";
 
 const BASE_URL = import.meta.env.VITE_CASE_MANAGEMENT_API_URL ?? "http://localhost:4311";
@@ -117,6 +122,22 @@ export const transitionCaseInstance = (id: string, input: AdvanceStageInput) =>
   });
 export const deleteCaseInstance = (id: string) =>
   request<void>(`/api/case-instances/${id}`, { method: "DELETE" });
+
+// Queues
+export const listQueues = () => request<{ results: Queue[] }>("/api/queues").then((r) => r.results);
+export const getQueue = (id: string) => request<Queue>(`/api/queues/${id}`);
+export const createQueue = (input: CreateQueueInput) =>
+  request<Queue>("/api/queues", { method: "POST", body: JSON.stringify(input) });
+export const updateQueue = (id: string, input: UpdateQueueInput) =>
+  request<Queue>(`/api/queues/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const deleteQueue = (id: string) => request<void>(`/api/queues/${id}`, { method: "DELETE" });
+export const addQueueMember = (queueId: string, input: AddQueueMemberInput) =>
+  request<Queue>(`/api/queues/${queueId}/members`, { method: "POST", body: JSON.stringify(input) });
+export const removeQueueMember = (queueId: string, userId: string) =>
+  request<void>(`/api/queues/${queueId}/members/${userId}`, { method: "DELETE" });
+
+// Users (for the queue-member picker)
+export const listUsers = () => request<{ results: UserSummary[] }>("/api/users").then((r) => r.results);
 
 // Action log
 export const listActionLog = (params: Record<string, string | undefined> = {}) => {

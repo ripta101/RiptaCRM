@@ -1,12 +1,12 @@
 import { List, ListItemButton, ListItemText, Paper, Typography } from "@mui/material";
 import type { CustomerDetail } from "@riptacrm/shared-types";
 
-export type CustomerMenuItem = "profile" | "amend" | "complaint";
+export type CustomerMenuItem = "profile" | "amend" | "lodgeCase";
 
 const MENU_ITEMS: { key: CustomerMenuItem; label: string }[] = [
   { key: "profile", label: "Customer Profile" },
   { key: "amend", label: "Amend Customer" },
-  { key: "complaint", label: "Lodge a Complaint" },
+  { key: "lodgeCase", label: "Lodge a Case" },
 ];
 
 interface CustomerMenuBoxProps {

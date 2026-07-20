@@ -52,6 +52,7 @@ export interface StageDefinition {
   displayOrder: number;
   positionX: number;
   positionY: number;
+  queueId: string | null;
   actions: ActionDefinition[];
   allowedNextStages: { id: string; toStageId: string }[];
 }
@@ -106,6 +107,7 @@ export interface CreateStageInput {
   displayOrder: number;
   positionX?: number;
   positionY?: number;
+  queueId?: string;
 }
 
 export type UpdateStageInput = Partial<CreateStageInput>;
@@ -129,6 +131,9 @@ export interface CreateCaseInstanceInput {
   caseTypeId: string;
   customerAccountId?: string;
   assignedToUserId?: string;
+  /** The id of the user lodging the case — used only to check queue membership for
+   * auto-assign-or-route-to-queue logic. Ignored if assignedToUserId is explicitly set. */
+  lodgedByUserId?: string;
   contactEmail?: string;
   fieldValues?: CaseFieldValueInput[];
 }
@@ -159,6 +164,8 @@ export interface CaseInstanceSummary {
   currentStageName: string;
   customerAccountId: string | null;
   assignedToUserId: string | null;
+  assignedQueueId: string | null;
+  assignedQueueName: string | null;
   contactEmail: string | null;
   status: CaseInstanceStatus;
   createdAt: string;

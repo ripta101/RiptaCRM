@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { customersRouter } from "./routes/customers";
+import { caseTypesRouter } from "./routes/caseTypes";
 
 export function createApp() {
   const app = express();
@@ -17,6 +18,7 @@ export function createApp() {
   });
 
   app.use("/api/customers", customersRouter);
+  app.use("/api", caseTypesRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found." });

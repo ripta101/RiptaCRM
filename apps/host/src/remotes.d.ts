@@ -6,6 +6,7 @@ declare module "customer/CustomerLookupModule" {
     onCustomerIdentified?: (customer: CustomerSummary) => void;
     closeRequested?: boolean;
     onInteractionEnded?: () => void;
+    currentUserId?: string | null;
   }
 
   const CustomerLookupModule: ComponentType<CustomerLookupModuleProps>;
