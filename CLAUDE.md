@@ -31,6 +31,11 @@ I am a technical engineer. I prefer clear, jargon-free output.
 - When creating a test data as part of verification, make sure to delete the test data you created after the verification
 - For visual/UX polish, responsive layout, and cross-browser checks that don't belong in
   Playwright, use and update `docs/testing/manual-checklist.md`
+- All displayed dates/timestamps must use DD-Mon-YYYY hh:mm AM/PM (e.g. `07-Jan-2027 02:30 PM`),
+  via `formatDateTime`/`formatDateOnly` from `@riptacrm/ui` — never `toLocaleString()`/
+  `toLocaleDateString()` directly, since the locale-default format is ambiguous (US-style
+  M/D/YYYY). Use `formatDateOnly` only for genuinely date-only fields with no meaningful
+  time-of-day (e.g. date of birth); everything else uses `formatDateTime`.
 
 # Project Structure
 
@@ -46,7 +51,7 @@ Follow standard MFE monorepo project structure:
 - packages/ - shared libraries across MFEs
   - `shared-types` - cross-cutting TS types/DTOs, consumed by every app
   - `auth-client` - shared auth context/provider, consumed by the host
-  - `ui` - shared MUI theme, consumed by the frontend apps
+  - `ui` - shared MUI theme, dynamic form renderer, and date/time formatting helpers, consumed by the frontend apps
 - package.json - Workspace dependencies
 - turbo.json / nx.json - Monorepo task orchestration
 - tsconfig.json - Global typescript config

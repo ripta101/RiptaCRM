@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ActionLogEntry } from "@riptacrm/shared-types";
+import { formatDateTime } from "@riptacrm/ui";
 import { listActionLog } from "../api/client";
 
 export function ActionLogViewer() {
@@ -81,7 +82,7 @@ export function ActionLogViewer() {
             <TableBody>
               {entries.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell>{new Date(e.firedAt).toLocaleString()}</TableCell>
+                  <TableCell>{formatDateTime(e.firedAt)}</TableCell>
                   <TableCell>{e.trigger}</TableCell>
                   <TableCell>{e.recipient}</TableCell>
                   <TableCell>{e.subject}</TableCell>

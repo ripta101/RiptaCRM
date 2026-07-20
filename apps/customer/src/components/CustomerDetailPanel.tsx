@@ -10,19 +10,12 @@ import {
   Typography,
 } from "@mui/material";
 import type { CustomerDetail } from "@riptacrm/shared-types";
+import { formatDateOnly, formatDateTime } from "@riptacrm/ui";
 
 interface CustomerDetailPanelProps {
   detail: CustomerDetail | null;
   loading: boolean;
   error: string | null;
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString();
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString();
 }
 
 export function CustomerDetailPanel({ detail, loading, error }: CustomerDetailPanelProps) {
@@ -59,7 +52,7 @@ export function CustomerDetailPanel({ detail, loading, error }: CustomerDetailPa
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
           <Typography color="text.secondary">Phone: {detail.phone}</Typography>
-          <Typography color="text.secondary">DOB: {formatDate(detail.dateOfBirth)}</Typography>
+          <Typography color="text.secondary">DOB: {formatDateOnly(detail.dateOfBirth)}</Typography>
           <Typography color="text.secondary">Email: {detail.email ?? "—"}</Typography>
           <Typography color="text.secondary">Account ID: {detail.accountId}</Typography>
           <Typography color="text.secondary">Company: {detail.companyName ?? "—"}</Typography>
@@ -88,7 +81,7 @@ export function CustomerDetailPanel({ detail, loading, error }: CustomerDetailPa
                         {c.breached && <Chip size="small" label="SLA breached" color="error" />}
                       </Box>
                     }
-                    secondary={`Opened ${formatDate(c.createdAt)} · SLA due ${formatDateTime(c.slaDueAt)}`}
+                    secondary={`Opened ${formatDateTime(c.createdAt)} · SLA due ${formatDateTime(c.slaDueAt)}`}
                   />
                 </ListItem>
               </Box>
