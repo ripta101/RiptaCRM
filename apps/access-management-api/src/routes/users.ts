@@ -7,9 +7,14 @@ export const usersRouter = Router();
 const AUTH_API_URL = process.env.AUTH_API_URL ?? "http://localhost:4312";
 const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "dev-only-insecure-service-key-change-me";
 
-usersRouter.get("/users", requirePermission("access-management-config"), async (_req, res) => {
+usersRouter.get("/users", requirePermission("access-management-config"), async (req, res) => {
   try {
-    const upstream = await fetch(`${AUTH_API_URL}/api/users`, {
+    const qs = new URLSearchParams();
+    for (const key of ["q", "limit", "ids"] as const) {
+      const value = req.query[key];
+      if (typeof value === "string" && value) qs.set(key, value);
+    }
+    const upstream = await fetch(`${AUTH_API_URL}/api/users?${qs.toString()}`, {
       headers: { "X-Internal-Service-Key": INTERNAL_SERVICE_KEY },
     });
     if (!upstream.ok) return res.json({ results: [] });

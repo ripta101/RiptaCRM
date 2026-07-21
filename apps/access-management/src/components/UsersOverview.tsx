@@ -17,7 +17,9 @@ export function UsersOverview({ authToken }: UsersOverviewProps) {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([listUsers(authToken), listProfiles({ includeArchived: "true" }, authToken)])
+    // This is a full-directory browse table (no pagination UI) — request the backend's max
+    // page size rather than its default cap, which is sized for the "Add member" picker.
+    Promise.all([listUsers({ limit: "50" }, authToken), listProfiles({ includeArchived: "true" }, authToken)])
       .then(([u, p]) => {
         setUsers(u);
         setProfiles(p);

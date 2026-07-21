@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import type { CaseInstanceSummary, Queue, UserSummary } from "@riptacrm/shared-types";
-import { formatDateTime } from "@riptacrm/ui";
+import { formatDateTime, UserAutocomplete } from "@riptacrm/ui";
 import {
   addQueueMember,
   assignCaseInstance,
@@ -42,7 +42,7 @@ export function QueueEditor({ queueId, onBack, authToken }: QueueEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [memberToAdd, setMemberToAdd] = useState("");
+  const [memberToAdd, setMemberToAdd] = useState<UserSummary | null>(null);
   const [memberError, setMemberError] = useState<string | null>(null);
   const [unassignedCases, setUnassignedCases] = useState<CaseInstanceSummary[]>([]);
   const [assignTo, setAssignTo] = useState<Record<string, string>>({});
@@ -50,17 +50,18 @@ export function QueueEditor({ queueId, onBack, authToken }: QueueEditorProps) {
 
   function load() {
     setLoading(true);
-    Promise.all([
-      getQueue(queueId, authToken),
-      listUsers(authToken),
-      listCaseInstances({ assignedQueueId: queueId, unassigned: "true", status: "OPEN" }, authToken),
-    ])
-      .then(([q, u, cases]) => {
-        setQueue(q);
-        setName(q.name);
-        setUsers(u);
-        setUnassignedCases(cases);
-      })
+    getQueue(queueId, authToken)
+      .then((q) =>
+        Promise.all([
+          listUsers({ ids: q.memberUserIds.join(",") }, authToken),
+          listCaseInstances({ assignedQueueId: queueId, unassigned: "true", status: "OPEN" }, authToken),
+        ]).then(([u, cases]) => {
+          setQueue(q);
+          setName(q.name);
+          setUsers(u);
+          setUnassignedCases(cases);
+        }),
+      )
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load queue."))
       .finally(() => setLoading(false));
   }
@@ -84,9 +85,9 @@ export function QueueEditor({ queueId, onBack, authToken }: QueueEditorProps) {
     if (!memberToAdd) return;
     setMemberError(null);
     try {
-      const updated = await addQueueMember(queueId, { userId: memberToAdd }, authToken);
+      const updated = await addQueueMember(queueId, { userId: memberToAdd.id }, authToken);
       setQueue(updated);
-      setMemberToAdd("");
+      setMemberToAdd(null);
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to add member.");
     }
@@ -127,7 +128,6 @@ export function QueueEditor({ queueId, onBack, authToken }: QueueEditorProps) {
   }
 
   const userById = new Map(users.map((u) => [u.id, u]));
-  const availableUsers = users.filter((u) => !queue.memberUserIds.includes(u.id));
 
   return (
     <Box>
@@ -190,20 +190,13 @@ export function QueueEditor({ queueId, onBack, authToken }: QueueEditorProps) {
       </Paper>
 
       <Stack direction="row" spacing={2} alignItems="center">
-        <TextField
-          select
+        <UserAutocomplete
           label="Add member"
-          size="small"
           value={memberToAdd}
-          onChange={(e) => setMemberToAdd(e.target.value)}
-          sx={{ minWidth: 220 }}
-        >
-          {availableUsers.map((u) => (
-            <MenuItem key={u.id} value={u.id}>
-              {u.name} ({u.username})
-            </MenuItem>
-          ))}
-        </TextField>
+          onChange={setMemberToAdd}
+          search={(q) => listUsers({ q, limit: "20" }, authToken)}
+          excludeIds={queue.memberUserIds}
+        />
         <Button variant="outlined" disabled={!memberToAdd} onClick={handleAddMember}>
           Add
         </Button>

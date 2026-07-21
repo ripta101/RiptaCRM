@@ -23,6 +23,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import { ALL_NAV_ITEMS, PROTECTED_PROFILE_REQUIRED_NAV_ITEM_ID } from "@riptacrm/shared-types";
 import type { CustomMenuItem, DashboardType, Profile, UserSummary } from "@riptacrm/shared-types";
+import { UserAutocomplete } from "@riptacrm/ui";
 import {
   addProfileMember,
   archiveProfile,
@@ -54,21 +55,23 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
   const [navItemError, setNavItemError] = useState<string | null>(null);
-  const [memberToAdd, setMemberToAdd] = useState("");
+  const [memberToAdd, setMemberToAdd] = useState<UserSummary | null>(null);
   const [memberError, setMemberError] = useState<string | null>(null);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
-    Promise.all([getProfile(profileId, authToken), listUsers(authToken), listMenuItems(authToken)])
-      .then(([p, u, m]) => {
-        setProfile(p);
-        setUsers(u);
-        setCustomMenuItems(m);
-        setName(p.name);
-        setDashboardType(p.dashboardType);
-        setCanStartInteractions(p.canStartInteractions);
-      })
+    Promise.all([getProfile(profileId, authToken), listMenuItems(authToken)])
+      .then(([p, m]) =>
+        listUsers({ ids: p.memberUserIds.join(",") }, authToken).then((u) => {
+          setProfile(p);
+          setUsers(u);
+          setCustomMenuItems(m);
+          setName(p.name);
+          setDashboardType(p.dashboardType);
+          setCanStartInteractions(p.canStartInteractions);
+        }),
+      )
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile."))
       .finally(() => setLoading(false));
   }
@@ -110,9 +113,9 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
     if (!memberToAdd) return;
     setMemberError(null);
     try {
-      const updated = await addProfileMember(profileId, { userId: memberToAdd }, authToken);
+      const updated = await addProfileMember(profileId, { userId: memberToAdd.id }, authToken);
       setProfile(updated);
-      setMemberToAdd("");
+      setMemberToAdd(null);
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to add member.");
     }
@@ -161,7 +164,6 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
   }
 
   const userById = new Map(users.map((u) => [u.id, u]));
-  const availableUsers = users.filter((u) => !profile.memberUserIds.includes(u.id));
   const hasMembers = profile.memberUserIds.length > 0;
   const lifecycleDisabledReason = profile.isProtected
     ? "This profile is protected and cannot be archived or deleted."
@@ -327,20 +329,13 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
       </Paper>
 
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
-        <TextField
-          select
+        <UserAutocomplete
           label="Add member"
-          size="small"
           value={memberToAdd}
-          onChange={(e) => setMemberToAdd(e.target.value)}
-          sx={{ minWidth: 220 }}
-        >
-          {availableUsers.map((u) => (
-            <MenuItem key={u.id} value={u.id}>
-              {u.name} ({u.username})
-            </MenuItem>
-          ))}
-        </TextField>
+          onChange={setMemberToAdd}
+          search={(q) => listUsers({ q, limit: "20" }, authToken)}
+          excludeIds={profile.memberUserIds}
+        />
         <Button variant="outlined" disabled={!memberToAdd} onClick={handleAddMember}>
           Add
         </Button>

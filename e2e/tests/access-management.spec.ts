@@ -30,8 +30,10 @@ test.describe("Access Management", () => {
       await itSupportCheckbox.click();
       await expect(itSupportCheckbox).toBeChecked();
 
-      // Add a member — Archive should then be blocked.
+      // Add a member — Archive should then be blocked. "Add member" is now a debounced
+      // search Autocomplete, not a plain dropdown — type before an option appears.
       await page.getByLabel("Add member").click();
+      await page.getByLabel("Add member").fill("Test User");
       await page.getByRole("option", { name: "Test User (test)", exact: true }).click();
       await page.getByRole("button", { name: "Add" }).click();
       await expect(page.getByRole("row", { name: /Test User/ })).toBeVisible();

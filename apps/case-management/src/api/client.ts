@@ -211,8 +211,13 @@ export const removeQueueMember = (queueId: string, userId: string, token?: strin
   request<void>(`/api/queues/${queueId}/members/${userId}`, { method: "DELETE" }, token);
 
 // Users (for the queue-member picker)
-export const listUsers = (token?: string | null) =>
-  request<{ results: UserSummary[] }>("/api/users", undefined, token).then((r) => r.results);
+export const listUsers = (params: Record<string, string | undefined> = {}, token?: string | null) => {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) qs.set(key, value);
+  }
+  return request<{ results: UserSummary[] }>(`/api/users?${qs.toString()}`, undefined, token).then((r) => r.results);
+};
 
 // Action log
 export const listActionLog = (
