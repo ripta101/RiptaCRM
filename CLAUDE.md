@@ -25,8 +25,12 @@ I am a technical engineer. I prefer clear, jargon-free output.
 - New user-facing flows must be added as committed Playwright specs under `e2e/tests/` —
   never as ad hoc scratch scripts; if you wrote one to verify manually, convert it into a
   spec before calling the task done
-- Before calling a task done, run `pnpm test` and the relevant `e2e` spec(s) in addition to
-  manual verification
+- Before calling a task done, run `pnpm test` for the touched package(s) plus manual verification.
+  Default to only the Playwright spec file(s) covering the feature/area just changed (new spec,
+  or existing spec(s) whose flows touch the changed code) — not the full suite. Reserve a full
+  `playwright test` run for changes to shared infra (`e2e/fixtures/*`, `playwright.config.ts`,
+  seed data spanning multiple modules, shared packages like `packages/ui`/`packages/shared-types`)
+  or when explicitly asked for a full regression pass
 - If verification finds a bug, fix it in the same task and call it out explicitly
 - When creating a test data as part of verification, make sure to delete the test data you created after the verification
 - For visual/UX polish, responsive layout, and cross-browser checks that don't belong in
