@@ -13,9 +13,9 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import type { MessageBroadcastSummary } from "@riptacrm/shared-types";
+import type { MessageBroadcastSummary, Profile } from "@riptacrm/shared-types";
 import { formatDateTime } from "@riptacrm/ui";
-import { listBroadcasts } from "../api/client";
+import { listBroadcasts, listProfiles } from "../api/client";
 import { getBroadcastStatus, type BroadcastStatus } from "../lib/broadcastStatus";
 
 interface BroadcastListProps {
@@ -38,6 +38,7 @@ const PRIORITY_COLOR: Record<string, "default" | "warning" | "error"> = {
 
 export function BroadcastList({ onSelect, onNew }: BroadcastListProps) {
   const [broadcasts, setBroadcasts] = useState<MessageBroadcastSummary[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +47,12 @@ export function BroadcastList({ onSelect, onNew }: BroadcastListProps) {
       .then(setBroadcasts)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    listProfiles()
+      .then(setProfiles)
+      .catch(() => setProfiles([]));
   }, []);
+
+  const profileNameById = new Map(profiles.map((p) => [p.id, p.name]));
 
   return (
     <Box>
@@ -70,7 +76,7 @@ export function BroadcastList({ onSelect, onNew }: BroadcastListProps) {
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
-                <TableCell>Target Roles</TableCell>
+                <TableCell>Target Profiles</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Start</TableCell>
@@ -84,8 +90,13 @@ export function BroadcastList({ onSelect, onNew }: BroadcastListProps) {
                   <TableRow key={b.id} hover sx={{ cursor: "pointer" }} onClick={() => onSelect(b.id)}>
                     <TableCell>{b.title}</TableCell>
                     <TableCell>
-                      {b.targetRoles.map((role) => (
-                        <Chip key={role} size="small" label={role} sx={{ mr: 0.5 }} />
+                      {b.targetProfileIds.map((profileId) => (
+                        <Chip
+                          key={profileId}
+                          size="small"
+                          label={profileNameById.get(profileId) ?? profileId}
+                          sx={{ mr: 0.5 }}
+                        />
                       ))}
                     </TableCell>
                     <TableCell>

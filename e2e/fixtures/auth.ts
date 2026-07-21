@@ -35,6 +35,19 @@ export async function openMessageBroadcast(page: Page) {
   await page.waitForSelector('text="New Broadcast"', { timeout: 15_000 });
 }
 
+export async function openAccessManagement(page: Page) {
+  await page.getByRole("button", { name: "open menu" }).click();
+  await page.getByText("Access Management", { exact: true }).click();
+  await page.waitForSelector('text="New Profile"', { timeout: 15_000 });
+}
+
+export async function openProfile(page: Page, profileName: string) {
+  await openAccessManagement(page);
+  // Not exact text — the protected profile's row appends a "Protected" chip to the same cell.
+  await page.locator("tr", { hasText: profileName }).click();
+  await page.waitForSelector('text="Menu Items"', { timeout: 10_000 });
+}
+
 /**
  * Case type detail is client-side component state only (no deep-linking by URL), so a
  * `page.reload()` drops you back on the case type list, not the case type you were viewing.

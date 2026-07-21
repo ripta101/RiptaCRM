@@ -7,13 +7,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AuthProvider, AuthSession } from "./types";
+import type { AuthProvider, AuthSession, LoginResult } from "./types";
 
 interface AuthContextValue {
   user: AuthSession | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<LoginResult>;
+  selectProfile: (preAuthToken: string, profileId: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,7 +36,18 @@ export function AuthContextProvider({ provider, children }: AuthProviderComponen
 
   const login = useCallback(
     async (username: string, password: string) => {
-      const session = await provider.login(username, password);
+      const result = await provider.login(username, password);
+      if (result.status === "authenticated") {
+        setUser(result.session);
+      }
+      return result;
+    },
+    [provider],
+  );
+
+  const selectProfile = useCallback(
+    async (preAuthToken: string, profileId: string) => {
+      const session = await provider.selectProfile(preAuthToken, profileId);
       setUser(session);
     },
     [provider],
@@ -47,8 +59,8 @@ export function AuthContextProvider({ provider, children }: AuthProviderComponen
   }, [provider]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: user !== null, loading, login, logout }),
-    [user, loading, login, logout],
+    () => ({ user, isAuthenticated: user !== null, loading, login, selectProfile, logout }),
+    [user, loading, login, selectProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

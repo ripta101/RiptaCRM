@@ -1,6 +1,7 @@
 import type {
   CreateMessageBroadcastInput,
   MessageBroadcastSummary,
+  Profile,
   UpdateMessageBroadcastInput,
 } from "@riptacrm/shared-types";
 
@@ -30,3 +31,6 @@ export const cancelBroadcast = (id: string) =>
   request<MessageBroadcastSummary>(`/api/broadcasts/${id}/cancel`, { method: "POST" });
 export const deleteBroadcast = (id: string) =>
   request<void>(`/api/broadcasts/${id}`, { method: "DELETE" });
+
+// Powers the composer's "target profiles" checkbox list.
+export const listProfiles = () => request<{ results: Profile[] }>("/api/profiles").then((r) => r.results);

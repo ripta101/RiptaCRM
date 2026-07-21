@@ -7,9 +7,10 @@ import ChatIcon from "@mui/icons-material/Chat";
 import EmailIcon from "@mui/icons-material/Email";
 import GavelIcon from "@mui/icons-material/Gavel";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import { ALL_NAV_ITEMS } from "@riptacrm/shared-types";
 import { useAuth } from "@riptacrm/auth-client";
 import { useInteractions } from "../interactions/InteractionsContext";
-import { adminNavItems, frontlineNavItems } from "./navItems";
 
 const ICONS: Record<string, ComponentType> = {
   home: HomeIcon,
@@ -18,6 +19,7 @@ const ICONS: Record<string, ComponentType> = {
   email: EmailIcon,
   "case-management": GavelIcon,
   broadcast: CampaignIcon,
+  "access-management": AdminPanelSettingsIcon,
 };
 
 export const SIDE_MENU_WIDTH = 240;
@@ -31,7 +33,7 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
   const navigate = useNavigate();
   const { setActiveTab } = useInteractions();
   const { user } = useAuth();
-  const navItems = user?.role === "admin" ? adminNavItems : frontlineNavItems;
+  const navItems = ALL_NAV_ITEMS.filter((item) => user?.navItemIds.includes(item.id));
 
   function handleSelect(path: string) {
     setActiveTab(null);

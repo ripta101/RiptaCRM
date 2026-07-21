@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { broadcastsRouter } from "./routes/broadcasts";
+import { profilesRouter } from "./routes/profiles";
 
 export function createApp() {
   const app = express();
@@ -18,6 +19,7 @@ export function createApp() {
   });
 
   app.use("/api", broadcastsRouter);
+  app.use("/api", profilesRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found." });

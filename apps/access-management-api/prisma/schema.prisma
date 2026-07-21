@@ -1,0 +1,43 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+model Profile {
+  id                   String    @id @default(uuid())
+  name                 String    @unique
+  isProtected          Boolean   @default(false)
+  dashboardType        String // "frontline" | "admin"
+  canStartInteractions Boolean   @default(false)
+  archivedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  navItems ProfileNavItem[]
+  members  ProfileUser[]
+}
+
+model ProfileNavItem {
+  id        String   @id @default(uuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  navItemId String // id from the fixed shared-types nav-item registry — not a DB FK
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, navItemId])
+}
+
+model ProfileUser {
+  id        String   @id @default(uuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId    String // plain, unvalidated — mirrors QueueMember.userId; auth-api owns Users
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, userId])
+}

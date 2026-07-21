@@ -11,9 +11,7 @@ export function ProfilePage() {
       </Typography>
       <Typography color="text.secondary">Name: {user?.name}</Typography>
       <Typography color="text.secondary">Email: {user?.email}</Typography>
-      <Typography color="text.secondary">
-        Role: {user?.role === "admin" ? "Business Admin" : "Frontline User"}
-      </Typography>
+      <Typography color="text.secondary">Profile: {user?.profileName}</Typography>
     </Box>
   );
 }

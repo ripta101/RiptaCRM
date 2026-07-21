@@ -2,8 +2,14 @@ import { PrismaClient } from "../generated/prisma";
 
 const prisma = new PrismaClient();
 
+// Profile ids here must match access-management-api/prisma/seed.ts's seeded Profile.id
+// values — same trust model MessageBroadcastTargetProfile.profileId already has with
+// access-management-api (this service owns no Profile model).
+const FRONTLINE = "profile-frontline-user";
+const ADMIN = "profile-business-admin";
+
 async function main() {
-  await prisma.messageBroadcastTargetRole.deleteMany();
+  await prisma.messageBroadcastTargetProfile.deleteMany();
   await prisma.messageBroadcast.deleteMany();
 
   const now = new Date();
@@ -17,7 +23,7 @@ async function main() {
       priority: 3,
       startAt: new Date(now.getTime() - hour),
       endAt: new Date(now.getTime() + 7 * day),
-      targetRoles: { create: [{ role: "frontline" }, { role: "admin" }] },
+      targetProfiles: { create: [{ profileId: FRONTLINE }, { profileId: ADMIN }] },
     },
   });
 
@@ -28,7 +34,7 @@ async function main() {
       priority: 0,
       startAt: new Date(now.getTime() - hour),
       endAt: new Date(now.getTime() + 3 * day),
-      targetRoles: { create: [{ role: "frontline" }] },
+      targetProfiles: { create: [{ profileId: FRONTLINE }] },
     },
   });
 
@@ -39,7 +45,7 @@ async function main() {
       priority: 2,
       startAt: new Date(now.getTime() + day),
       endAt: new Date(now.getTime() + 2 * day),
-      targetRoles: { create: [{ role: "frontline" }, { role: "admin" }] },
+      targetProfiles: { create: [{ profileId: FRONTLINE }, { profileId: ADMIN }] },
     },
   });
 
@@ -50,7 +56,7 @@ async function main() {
       priority: 0,
       startAt: new Date(now.getTime() - 10 * day),
       endAt: new Date(now.getTime() - day),
-      targetRoles: { create: [{ role: "frontline" }] },
+      targetProfiles: { create: [{ profileId: FRONTLINE }] },
     },
   });
 
@@ -62,7 +68,7 @@ async function main() {
       startAt: new Date(now.getTime() - hour),
       endAt: new Date(now.getTime() + day),
       canceledAt: now,
-      targetRoles: { create: [{ role: "admin" }] },
+      targetProfiles: { create: [{ profileId: ADMIN }] },
     },
   });
 }

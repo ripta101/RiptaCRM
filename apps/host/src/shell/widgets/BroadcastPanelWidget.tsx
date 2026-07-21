@@ -22,7 +22,7 @@ export function BroadcastPanelWidget() {
     let cancelled = false;
 
     function load() {
-      listActiveBroadcasts(user!.role)
+      listActiveBroadcasts(user!.profileId)
         .then((results) => {
           if (!cancelled) {
             setBroadcasts(results);
@@ -36,14 +36,14 @@ export function BroadcastPanelWidget() {
 
     load();
     // Interval polling, not long-polling: each tick is a fresh stateless request, so
-    // there's no stuck-connection state to manage on unmount/role-change — just clear
+    // there's no stuck-connection state to manage on unmount/profile-change — just clear
     // the timer.
     const id = setInterval(load, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [user?.role]);
+  }, [user?.profileId]);
 
   return (
     <Card>

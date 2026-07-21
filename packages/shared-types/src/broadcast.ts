@@ -5,7 +5,7 @@ export interface MessageBroadcastSummary {
   title: string;
   bodyHtml: string;
   priority: BroadcastPriority | null;
-  targetRoles: string[];
+  targetProfileIds: string[];
   startAt: string;
   endAt: string;
   canceledAt: string | null;
@@ -18,7 +18,7 @@ export interface CreateMessageBroadcastInput {
   title: string;
   bodyHtml: string;
   priority?: BroadcastPriority;
-  targetRoles: string[];
+  targetProfileIds: string[];
   startAt: string;
   endAt: string;
   createdByUserId?: string;

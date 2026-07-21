@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { ALL_USER_ROLES } from "@riptacrm/shared-types";
 import type { BroadcastPriority, CreateMessageBroadcastInput, UpdateMessageBroadcastInput } from "@riptacrm/shared-types";
 import { prisma } from "../db";
 import { priorityFromLabel, toMessageBroadcastSummary } from "../lib/mappers";
@@ -9,7 +8,7 @@ import { isRecordNotFoundError } from "../lib/prismaErrors";
 export const broadcastsRouter = Router();
 
 const VALID_PRIORITIES: BroadcastPriority[] = ["LOW", "NORMAL", "HIGH"];
-const INCLUDE_TARGET_ROLES = { targetRoles: true } as const;
+const INCLUDE_TARGET_PROFILES = { targetProfiles: true } as const;
 
 function parseDate(value: unknown): Date | null {
   if (typeof value !== "string") return null;
@@ -18,9 +17,9 @@ function parseDate(value: unknown): Date | null {
 }
 
 broadcastsRouter.get("/broadcasts/active", async (req, res) => {
-  const role = req.query.role;
-  if (typeof role !== "string" || !role.trim()) {
-    return res.status(400).json({ error: "role query parameter is required." });
+  const profileId = req.query.profileId;
+  if (typeof profileId !== "string" || !profileId.trim()) {
+    return res.status(400).json({ error: "profileId query parameter is required." });
   }
 
   const now = new Date();
@@ -29,10 +28,10 @@ broadcastsRouter.get("/broadcasts/active", async (req, res) => {
       startAt: { lte: now },
       endAt: { gte: now },
       canceledAt: null,
-      targetRoles: { some: { role } },
+      targetProfiles: { some: { profileId } },
     },
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-    include: INCLUDE_TARGET_ROLES,
+    include: INCLUDE_TARGET_PROFILES,
   });
   res.json({ results: broadcasts.map(toMessageBroadcastSummary) });
 });
@@ -40,7 +39,7 @@ broadcastsRouter.get("/broadcasts/active", async (req, res) => {
 broadcastsRouter.get("/broadcasts", async (_req, res) => {
   const broadcasts = await prisma.messageBroadcast.findMany({
     orderBy: { createdAt: "desc" },
-    include: INCLUDE_TARGET_ROLES,
+    include: INCLUDE_TARGET_PROFILES,
   });
   res.json({ results: broadcasts.map(toMessageBroadcastSummary) });
 });
@@ -48,7 +47,7 @@ broadcastsRouter.get("/broadcasts", async (_req, res) => {
 broadcastsRouter.get("/broadcasts/:id", async (req, res) => {
   const broadcast = await prisma.messageBroadcast.findUnique({
     where: { id: req.params.id },
-    include: INCLUDE_TARGET_ROLES,
+    include: INCLUDE_TARGET_PROFILES,
   });
   if (!broadcast) return res.status(404).json({ error: "Broadcast not found." });
   res.json(toMessageBroadcastSummary(broadcast));
@@ -63,12 +62,8 @@ broadcastsRouter.post("/broadcasts", async (req, res) => {
   if (!body.bodyHtml?.trim()) {
     return res.status(400).json({ error: "bodyHtml is required." });
   }
-  if (!Array.isArray(body.targetRoles) || body.targetRoles.length === 0) {
-    return res.status(400).json({ error: "targetRoles must be a non-empty array." });
-  }
-  const unknownRole = body.targetRoles.find((r) => !ALL_USER_ROLES.includes(r as (typeof ALL_USER_ROLES)[number]));
-  if (unknownRole) {
-    return res.status(400).json({ error: `Unknown target role "${unknownRole}".` });
+  if (!Array.isArray(body.targetProfileIds) || body.targetProfileIds.length === 0) {
+    return res.status(400).json({ error: "targetProfileIds must be a non-empty array." });
   }
   const startAt = parseDate(body.startAt);
   const endAt = parseDate(body.endAt);
@@ -90,9 +85,9 @@ broadcastsRouter.post("/broadcasts", async (req, res) => {
       startAt,
       endAt,
       createdByUserId: body.createdByUserId ?? null,
-      targetRoles: { create: body.targetRoles.map((role) => ({ role })) },
+      targetProfiles: { create: body.targetProfileIds.map((profileId) => ({ profileId })) },
     },
-    include: INCLUDE_TARGET_ROLES,
+    include: INCLUDE_TARGET_PROFILES,
   });
   res.status(201).json(toMessageBroadcastSummary(broadcast));
 });
@@ -109,13 +104,9 @@ broadcastsRouter.patch("/broadcasts/:id", async (req, res) => {
   if (body.bodyHtml !== undefined && !body.bodyHtml.trim()) {
     return res.status(400).json({ error: "bodyHtml cannot be empty." });
   }
-  if (body.targetRoles !== undefined) {
-    if (!Array.isArray(body.targetRoles) || body.targetRoles.length === 0) {
-      return res.status(400).json({ error: "targetRoles must be a non-empty array." });
-    }
-    const unknownRole = body.targetRoles.find((r) => !ALL_USER_ROLES.includes(r as (typeof ALL_USER_ROLES)[number]));
-    if (unknownRole) {
-      return res.status(400).json({ error: `Unknown target role "${unknownRole}".` });
+  if (body.targetProfileIds !== undefined) {
+    if (!Array.isArray(body.targetProfileIds) || body.targetProfileIds.length === 0) {
+      return res.status(400).json({ error: "targetProfileIds must be a non-empty array." });
     }
   }
 
@@ -139,10 +130,10 @@ broadcastsRouter.patch("/broadcasts/:id", async (req, res) => {
   }
 
   const broadcast = await prisma.$transaction(async (tx) => {
-    if (body.targetRoles) {
-      await tx.messageBroadcastTargetRole.deleteMany({ where: { broadcastId: existing.id } });
-      await tx.messageBroadcastTargetRole.createMany({
-        data: body.targetRoles.map((role) => ({ broadcastId: existing.id, role })),
+    if (body.targetProfileIds) {
+      await tx.messageBroadcastTargetProfile.deleteMany({ where: { broadcastId: existing.id } });
+      await tx.messageBroadcastTargetProfile.createMany({
+        data: body.targetProfileIds.map((profileId) => ({ broadcastId: existing.id, profileId })),
       });
     }
     return tx.messageBroadcast.update({
@@ -154,7 +145,7 @@ broadcastsRouter.patch("/broadcasts/:id", async (req, res) => {
         startAt,
         endAt,
       },
-      include: INCLUDE_TARGET_ROLES,
+      include: INCLUDE_TARGET_PROFILES,
     });
   });
   res.json(toMessageBroadcastSummary(broadcast));
@@ -167,7 +158,7 @@ broadcastsRouter.post("/broadcasts/:id/cancel", async (req, res) => {
   if (existing.canceledAt) {
     const current = await prisma.messageBroadcast.findUniqueOrThrow({
       where: { id: existing.id },
-      include: INCLUDE_TARGET_ROLES,
+      include: INCLUDE_TARGET_PROFILES,
     });
     return res.json(toMessageBroadcastSummary(current));
   }
@@ -179,7 +170,7 @@ broadcastsRouter.post("/broadcasts/:id/cancel", async (req, res) => {
       canceledAt: now,
       endAt: existing.endAt > now ? now : existing.endAt,
     },
-    include: INCLUDE_TARGET_ROLES,
+    include: INCLUDE_TARGET_PROFILES,
   });
   res.json(toMessageBroadcastSummary(broadcast));
 });

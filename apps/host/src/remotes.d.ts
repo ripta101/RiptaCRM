@@ -26,3 +26,10 @@ declare module "messageBroadcast/MessageBroadcastModule" {
   const MessageBroadcastModule: ComponentType;
   export default MessageBroadcastModule;
 }
+
+declare module "accessManagement/AccessManagementModule" {
+  import type { ComponentType } from "react";
+
+  const AccessManagementModule: ComponentType;
+  export default AccessManagementModule;
+}

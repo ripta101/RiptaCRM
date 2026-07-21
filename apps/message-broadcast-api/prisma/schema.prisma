@@ -20,15 +20,15 @@ model MessageBroadcast {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  targetRoles MessageBroadcastTargetRole[]
+  targetProfiles MessageBroadcastTargetProfile[]
 }
 
-model MessageBroadcastTargetRole {
+model MessageBroadcastTargetProfile {
   id          String           @id @default(uuid())
   broadcastId String
   broadcast   MessageBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
-  role        String // "frontline" | "admin" today; extensible — see UserRole in shared-types
+  profileId   String // plain, unvalidated — mirrors ProfileUser.userId; access-management-api owns Profiles
   createdAt   DateTime         @default(now())
 
-  @@unique([broadcastId, role])
+  @@unique([broadcastId, profileId])
 }

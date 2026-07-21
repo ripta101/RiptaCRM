@@ -32,6 +32,13 @@ export default defineConfig({
           entryGlobalName: "messageBroadcast",
           shareScope: "default",
         },
+        accessManagement: {
+          type: "module",
+          name: "accessManagement",
+          entry: "http://localhost:5177/remoteEntry.js",
+          entryGlobalName: "accessManagement",
+          shareScope: "default",
+        },
       },
       shared: {
         react: { singleton: true, requiredVersion: false },

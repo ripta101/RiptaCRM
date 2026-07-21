@@ -17,7 +17,7 @@ function validPayload(overrides: Record<string, unknown> = {}) {
   return {
     title: "Test broadcast",
     bodyHtml: "<p>Hello</p>",
-    targetRoles: ["frontline"],
+    targetProfileIds: ["profile-frontline-user"],
     startAt: new Date(now - 60_000).toISOString(),
     endAt: new Date(now + 60 * 60_000).toISOString(),
     ...overrides,
@@ -41,13 +41,8 @@ describe("POST /api/broadcasts validation", () => {
     expect(res.status).toBe(400);
   });
 
-  it("rejects an empty targetRoles array", async () => {
-    const res = await request(app).post("/api/broadcasts").send(validPayload({ targetRoles: [] }));
-    expect(res.status).toBe(400);
-  });
-
-  it("rejects an unknown target role", async () => {
-    const res = await request(app).post("/api/broadcasts").send(validPayload({ targetRoles: ["manager"] }));
+  it("rejects an empty targetProfileIds array", async () => {
+    const res = await request(app).post("/api/broadcasts").send(validPayload({ targetProfileIds: [] }));
     expect(res.status).toBe(400);
   });
 
@@ -64,10 +59,16 @@ describe("POST /api/broadcasts validation", () => {
 });
 
 describe("POST /api/broadcasts creation", () => {
-  it("creates the correct target-role rows", async () => {
-    const res = await createBroadcast({ targetRoles: ["frontline", "admin"] });
+  it("creates the correct target-profile rows", async () => {
+    const res = await createBroadcast({ targetProfileIds: ["profile-frontline-user", "profile-business-admin"] });
     expect(res.status).toBe(201);
-    expect(res.body.targetRoles.sort()).toEqual(["admin", "frontline"]);
+    expect(res.body.targetProfileIds.sort()).toEqual(["profile-business-admin", "profile-frontline-user"]);
+  });
+
+  it("accepts an arbitrary/unvalidated profile id — targeting isn't cross-checked server-side", async () => {
+    const res = await createBroadcast({ targetProfileIds: ["profile-does-not-exist"] });
+    expect(res.status).toBe(201);
+    expect(res.body.targetProfileIds).toEqual(["profile-does-not-exist"]);
   });
 
   it("sanitizes bodyHtml on create", async () => {
@@ -82,13 +83,13 @@ describe("POST /api/broadcasts creation", () => {
 });
 
 describe("PATCH /api/broadcasts/:id", () => {
-  it("replaces targetRoles correctly", async () => {
-    const created = await createBroadcast({ targetRoles: ["frontline"] });
+  it("replaces targetProfileIds correctly", async () => {
+    const created = await createBroadcast({ targetProfileIds: ["profile-frontline-user"] });
     const res = await request(app)
       .patch(`/api/broadcasts/${created.body.id}`)
-      .send({ targetRoles: ["admin"] });
+      .send({ targetProfileIds: ["profile-business-admin"] });
     expect(res.status).toBe(200);
-    expect(res.body.targetRoles).toEqual(["admin"]);
+    expect(res.body.targetProfileIds).toEqual(["profile-business-admin"]);
   });
 
   it("updates title without touching other fields", async () => {
@@ -119,36 +120,36 @@ describe("POST /api/broadcasts/:id/cancel", () => {
 });
 
 describe("DELETE /api/broadcasts/:id", () => {
-  it("is idempotent and cascades target-role rows", async () => {
+  it("is idempotent and cascades target-profile rows", async () => {
     const created = await createBroadcast();
     const first = await request(app).delete(`/api/broadcasts/${created.body.id}`);
     const second = await request(app).delete(`/api/broadcasts/${created.body.id}`);
     expect(first.status).toBe(204);
     expect(second.status).toBe(204);
 
-    const remainingRoles = await prisma.messageBroadcastTargetRole.count({
+    const remaining = await prisma.messageBroadcastTargetProfile.count({
       where: { broadcastId: created.body.id },
     });
-    expect(remainingRoles).toBe(0);
+    expect(remaining).toBe(0);
   });
 });
 
 describe("GET /api/broadcasts/active", () => {
-  it("requires a role query parameter", async () => {
+  it("requires a profileId query parameter", async () => {
     const res = await request(app).get("/api/broadcasts/active");
     expect(res.status).toBe(400);
   });
 
-  it("excludes broadcasts not targeting the requested role", async () => {
-    await createBroadcast({ title: "Admin only", targetRoles: ["admin"] });
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+  it("excludes broadcasts not targeting the requested profile", async () => {
+    await createBroadcast({ title: "Admin only", targetProfileIds: ["profile-business-admin"] });
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     expect(res.body.results.some((b: { title: string }) => b.title === "Admin only")).toBe(false);
   });
 
   it("excludes canceled broadcasts", async () => {
     const created = await createBroadcast({ title: "Will be canceled" });
     await request(app).post(`/api/broadcasts/${created.body.id}/cancel`);
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     expect(res.body.results.some((b: { id: string }) => b.id === created.body.id)).toBe(false);
   });
 
@@ -159,7 +160,7 @@ describe("GET /api/broadcasts/active", () => {
       startAt: new Date(now + 60 * 60_000).toISOString(),
       endAt: new Date(now + 2 * 60 * 60_000).toISOString(),
     });
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     expect(res.body.results.some((b: { title: string }) => b.title === "Future")).toBe(false);
   });
 
@@ -170,20 +171,20 @@ describe("GET /api/broadcasts/active", () => {
       startAt: new Date(now - 2 * 60 * 60_000).toISOString(),
       endAt: new Date(now - 60 * 60_000).toISOString(),
     });
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     expect(res.body.results.some((b: { title: string }) => b.title === "Past")).toBe(false);
   });
 
-  it("includes exactly the currently-valid broadcasts for the role", async () => {
-    const created = await createBroadcast({ title: "Currently valid", targetRoles: ["frontline"] });
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+  it("includes exactly the currently-valid broadcasts for the profile", async () => {
+    const created = await createBroadcast({ title: "Currently valid", targetProfileIds: ["profile-frontline-user"] });
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     expect(res.body.results.some((b: { id: string }) => b.id === created.body.id)).toBe(true);
   });
 
   it("orders by priority desc then createdAt desc, so an older HIGH beats a newer un-prioritized one", async () => {
     const low = await createBroadcast({ title: "No priority, newer" });
     const high = await createBroadcast({ title: "High priority, older", priority: "HIGH" });
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     const ids = res.body.results.map((b: { id: string }) => b.id);
     expect(ids.indexOf(high.body.id)).toBeLessThan(ids.indexOf(low.body.id));
   });
@@ -191,7 +192,7 @@ describe("GET /api/broadcasts/active", () => {
   it("ties break on createdAt desc for equal priority", async () => {
     const first = await createBroadcast({ title: "First", priority: "NORMAL" });
     const second = await createBroadcast({ title: "Second", priority: "NORMAL" });
-    const res = await request(app).get("/api/broadcasts/active?role=frontline");
+    const res = await request(app).get("/api/broadcasts/active?profileId=profile-frontline-user");
     const ids = res.body.results.map((b: { id: string }) => b.id);
     expect(ids.indexOf(second.body.id)).toBeLessThan(ids.indexOf(first.body.id));
   });

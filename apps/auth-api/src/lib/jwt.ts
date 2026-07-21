@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import type { UserRole } from "@riptacrm/shared-types";
+import type { DashboardType } from "@riptacrm/shared-types";
 
 // Known simplification: a single static secret from env, with an insecure dev-only
 // fallback, no rotation, no per-environment secret management. Acceptable for this
@@ -12,7 +12,11 @@ export interface AuthTokenPayload {
   sub: string;
   name: string;
   email: string;
-  role: UserRole;
+  profileId: string;
+  profileName: string;
+  dashboardType: DashboardType;
+  canStartInteractions: boolean;
+  navItemIds: string[];
 }
 
 export interface VerifiedAuthTokenPayload extends AuthTokenPayload {
@@ -26,4 +30,30 @@ export function signAuthToken(payload: AuthTokenPayload): string {
 
 export function verifyAuthToken(token: string): VerifiedAuthTokenPayload {
   return jwt.verify(token, JWT_SECRET) as VerifiedAuthTokenPayload;
+}
+
+// Short-lived, purpose-scoped token issued when a user has more than one profile and
+// must pick one before a real session begins. Kept structurally distinct from
+// AuthTokenPayload (different claims, no capabilities baked in) so it can never be
+// mistaken for — or accepted in place of — a full session token.
+export interface PreAuthTokenPayload {
+  sub: string;
+  purpose: "profile-selection";
+}
+
+export interface VerifiedPreAuthTokenPayload extends PreAuthTokenPayload {
+  iat: number;
+  exp: number;
+}
+
+export function signPreAuthToken(payload: PreAuthTokenPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "5m" });
+}
+
+export function verifyPreAuthToken(token: string): VerifiedPreAuthTokenPayload {
+  const claims = jwt.verify(token, JWT_SECRET) as VerifiedPreAuthTokenPayload;
+  if (claims.purpose !== "profile-selection") {
+    throw new Error("Not a pre-auth token.");
+  }
+  return claims;
 }

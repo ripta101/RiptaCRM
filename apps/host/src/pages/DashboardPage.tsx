@@ -25,7 +25,7 @@ export function DashboardPage() {
     });
   }
 
-  if (user?.role === "admin") {
+  if (user?.dashboardType === "admin") {
     return (
       <Box>
         <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
@@ -58,9 +58,11 @@ export function DashboardPage() {
         <Typography variant="h4" component="h1">
           Dashboard
         </Typography>
-        <Button variant="contained" onClick={handleNewInteraction}>
-          New Interaction
-        </Button>
+        {user?.canStartInteractions && (
+          <Button variant="contained" onClick={handleNewInteraction}>
+            New Interaction
+          </Button>
+        )}
       </Box>
 
       <Tabs value={tab} onChange={(_e, value: FrontlineTab) => setTab(value)} sx={{ mb: 3 }}>

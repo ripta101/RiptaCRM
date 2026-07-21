@@ -20,7 +20,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface CreateThrowawayBroadcastInput {
   title: string;
-  targetRoles: string[];
+  targetProfileIds: string[];
   priority?: "LOW" | "NORMAL" | "HIGH";
   startAt?: string;
   endAt?: string;
@@ -34,7 +34,7 @@ export async function createThrowawayBroadcast(input: CreateThrowawayBroadcastIn
     body: JSON.stringify({
       title: input.title,
       bodyHtml: `<p>${input.title}</p>`,
-      targetRoles: input.targetRoles,
+      targetProfileIds: input.targetProfileIds,
       priority: input.priority,
       startAt: input.startAt ?? new Date(now - 60_000).toISOString(),
       endAt: input.endAt ?? new Date(now + 60 * 60_000).toISOString(),

@@ -14,8 +14,15 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { ALL_USER_ROLES, type BroadcastPriority } from "@riptacrm/shared-types";
-import { cancelBroadcast, createBroadcast, deleteBroadcast, getBroadcast, updateBroadcast } from "../api/client";
+import type { BroadcastPriority, Profile } from "@riptacrm/shared-types";
+import {
+  cancelBroadcast,
+  createBroadcast,
+  deleteBroadcast,
+  getBroadcast,
+  listProfiles,
+  updateBroadcast,
+} from "../api/client";
 import { getBroadcastStatus } from "../lib/broadcastStatus";
 import { RichTextEditor } from "./RichTextEditor";
 
@@ -27,7 +34,7 @@ interface BroadcastComposerProps {
 interface FormState {
   title: string;
   bodyHtml: string;
-  targetRoles: string[];
+  targetProfileIds: string[];
   priority: BroadcastPriority | "";
   startAt: string;
   endAt: string;
@@ -53,7 +60,7 @@ function defaultForm(): FormState {
   return {
     title: "",
     bodyHtml: "",
-    targetRoles: [],
+    targetProfileIds: [],
     priority: "",
     startAt: toDatetimeLocal(aMinuteAgo.toISOString()),
     endAt: toDatetimeLocal(inOneWeek.toISOString()),
@@ -67,6 +74,13 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+
+  useEffect(() => {
+    listProfiles()
+      .then(setProfiles)
+      .catch(() => setProfiles([]));
+  }, []);
 
   useEffect(() => {
     if (!broadcastId) return;
@@ -75,7 +89,7 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
         setForm({
           title: b.title,
           bodyHtml: b.bodyHtml,
-          targetRoles: b.targetRoles,
+          targetProfileIds: b.targetProfileIds,
           priority: b.priority ?? "",
           startAt: toDatetimeLocal(b.startAt),
           endAt: toDatetimeLocal(b.endAt),
@@ -86,12 +100,12 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
       .finally(() => setLoading(false));
   }, [broadcastId]);
 
-  function toggleRole(role: string) {
+  function toggleProfile(profileId: string) {
     setForm((f) => ({
       ...f,
-      targetRoles: f.targetRoles.includes(role)
-        ? f.targetRoles.filter((r) => r !== role)
-        : [...f.targetRoles, role],
+      targetProfileIds: f.targetProfileIds.includes(profileId)
+        ? f.targetProfileIds.filter((id) => id !== profileId)
+        : [...f.targetProfileIds, profileId],
     }));
   }
 
@@ -102,7 +116,7 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
       const input = {
         title: form.title.trim(),
         bodyHtml: form.bodyHtml,
-        targetRoles: form.targetRoles,
+        targetProfileIds: form.targetProfileIds,
         priority: form.priority || undefined,
         startAt: fromDatetimeLocal(form.startAt),
         endAt: fromDatetimeLocal(form.endAt),
@@ -160,7 +174,7 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
     return <Alert severity="error">{loadError}</Alert>;
   }
 
-  const canSave = form.title.trim() && form.bodyHtml.trim() && form.targetRoles.length > 0 && !saving;
+  const canSave = form.title.trim() && form.bodyHtml.trim() && form.targetProfileIds.length > 0 && !saving;
 
   return (
     <Box>
@@ -193,11 +207,16 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             Target profiles
           </Typography>
-          {ALL_USER_ROLES.map((role) => (
+          {profiles.map((profile) => (
             <FormControlLabel
-              key={role}
-              control={<Checkbox checked={form.targetRoles.includes(role)} onChange={() => toggleRole(role)} />}
-              label={role}
+              key={profile.id}
+              control={
+                <Checkbox
+                  checked={form.targetProfileIds.includes(profile.id)}
+                  onChange={() => toggleProfile(profile.id)}
+                />
+              }
+              label={profile.name}
             />
           ))}
         </Box>

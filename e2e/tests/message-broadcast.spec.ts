@@ -27,7 +27,7 @@ test.describe("Message Broadcast", () => {
     await page.keyboard.press("Control+a");
     await page.getByRole("button", { name: "Bold" }).click();
 
-    await page.getByRole("checkbox", { name: "frontline" }).check();
+    await page.getByRole("checkbox", { name: "Frontline User" }).check();
     await page.getByRole("button", { name: "Save" }).click();
     await page.getByRole("button", { name: "New Broadcast" }).waitFor();
 
@@ -45,7 +45,7 @@ test.describe("Message Broadcast", () => {
   test("editing a broadcast's title updates what the frontline dashboard shows", async ({ page }) => {
     const originalTitle = `Original ${Date.now()}`;
     const updatedTitle = `Updated ${Date.now()}`;
-    const { id } = await createThrowawayBroadcast({ title: originalTitle, targetRoles: ["frontline"] });
+    const { id } = await createThrowawayBroadcast({ title: originalTitle, targetProfileIds: ["profile-frontline-user"] });
     createdIds.push(id);
 
     await loginAsAdmin(page);
@@ -64,7 +64,7 @@ test.describe("Message Broadcast", () => {
     const now = Date.now();
     const { id } = await createThrowawayBroadcast({
       title,
-      targetRoles: ["frontline"],
+      targetProfileIds: ["profile-frontline-user"],
       startAt: new Date(now - 2 * 60 * 60_000).toISOString(),
       endAt: new Date(now - 60 * 60_000).toISOString(),
     });
@@ -78,7 +78,7 @@ test.describe("Message Broadcast", () => {
     page,
   }) => {
     const title = `Will be canceled ${Date.now()}`;
-    const { id } = await createThrowawayBroadcast({ title, targetRoles: ["frontline"] });
+    const { id } = await createThrowawayBroadcast({ title, targetProfileIds: ["profile-frontline-user"] });
     createdIds.push(id);
 
     await loginAsAdmin(page);
@@ -92,12 +92,12 @@ test.describe("Message Broadcast", () => {
     await expect(announcementsPanel(page)).not.toContainText(title);
   });
 
-  test("a HIGH priority broadcast displays above a NORMAL priority one for the same role", async ({ page }) => {
+  test("a HIGH priority broadcast displays above a NORMAL priority one for the same profile", async ({ page }) => {
     const lowTitle = `Normal priority ${Date.now()}`;
     const highTitle = `High priority ${Date.now()}`;
-    const normal = await createThrowawayBroadcast({ title: lowTitle, targetRoles: ["frontline"], priority: "NORMAL" });
+    const normal = await createThrowawayBroadcast({ title: lowTitle, targetProfileIds: ["profile-frontline-user"], priority: "NORMAL" });
     createdIds.push(normal.id);
-    const high = await createThrowawayBroadcast({ title: highTitle, targetRoles: ["frontline"], priority: "HIGH" });
+    const high = await createThrowawayBroadcast({ title: highTitle, targetProfileIds: ["profile-frontline-user"], priority: "HIGH" });
     createdIds.push(high.id);
 
     await loginAsFrontline(page);
