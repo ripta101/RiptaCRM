@@ -3,6 +3,7 @@ import type { Prisma } from "../../generated/prisma";
 import type { AdvanceStageInput, AssignCaseInstanceInput, CreateCaseInstanceInput } from "@riptacrm/shared-types";
 import { prisma } from "../db";
 import { toCaseInstanceDetail, toCaseInstanceSummary, toStoredFieldValue } from "../lib/mappers";
+import { requirePermission } from "../lib/requirePermission";
 
 export const caseInstancesRouter = Router();
 
@@ -18,7 +19,7 @@ const DETAIL_INCLUDE = {
   fieldValues: { include: { fieldDefinition: true } },
 } as const;
 
-caseInstancesRouter.post("/case-instances", async (req, res) => {
+caseInstancesRouter.post("/case-instances", requirePermission("case-management-config"), async (req, res) => {
   const body = req.body as Partial<CreateCaseInstanceInput>;
   if (!body.caseTypeId) {
     return res.status(400).json({ error: "caseTypeId is required." });
@@ -97,7 +98,7 @@ caseInstancesRouter.post("/case-instances", async (req, res) => {
   res.status(201).json(toCaseInstanceDetail(instance));
 });
 
-caseInstancesRouter.get("/case-instances", async (req, res) => {
+caseInstancesRouter.get("/case-instances", requirePermission(), async (req, res) => {
   const query = req.query as Record<string, string | undefined>;
   const where: Prisma.CaseInstanceWhereInput = {};
   if (query.customerAccountId) where.customerAccountId = query.customerAccountId;
@@ -116,7 +117,7 @@ caseInstancesRouter.get("/case-instances", async (req, res) => {
   res.json({ results: instances.map(toCaseInstanceSummary) });
 });
 
-caseInstancesRouter.get("/case-instances/:id", async (req, res) => {
+caseInstancesRouter.get("/case-instances/:id", requirePermission(), async (req, res) => {
   const instance = await prisma.caseInstance.findUnique({
     where: { id: req.params.id },
     include: DETAIL_INCLUDE,
@@ -125,7 +126,7 @@ caseInstancesRouter.get("/case-instances/:id", async (req, res) => {
   res.json(toCaseInstanceDetail(instance));
 });
 
-caseInstancesRouter.patch("/case-instances/:id/assignment", async (req, res) => {
+caseInstancesRouter.patch("/case-instances/:id/assignment", requirePermission("case-management-config"), async (req, res) => {
   const body = req.body as Partial<AssignCaseInstanceInput>;
   if (!body.assignedToUserId?.trim()) {
     return res.status(400).json({ error: "assignedToUserId is required." });
@@ -142,7 +143,7 @@ caseInstancesRouter.patch("/case-instances/:id/assignment", async (req, res) => 
   res.json(toCaseInstanceSummary(updated));
 });
 
-caseInstancesRouter.post("/case-instances/:id/transitions", async (req, res) => {
+caseInstancesRouter.post("/case-instances/:id/transitions", requirePermission("case-management-config"), async (req, res) => {
   const body = req.body as Partial<AdvanceStageInput>;
   if (!body.toStageId) return res.status(400).json({ error: "toStageId is required." });
 
@@ -206,24 +207,28 @@ caseInstancesRouter.post("/case-instances/:id/transitions", async (req, res) => 
   res.json(toCaseInstanceDetail(updated));
 });
 
-caseInstancesRouter.patch("/case-instances/:id/stage-history/current/backdate", async (req, res) => {
-  const body = req.body as { slaDueAt?: string };
-  if (!body.slaDueAt) return res.status(400).json({ error: "slaDueAt is required." });
+caseInstancesRouter.patch(
+  "/case-instances/:id/stage-history/current/backdate",
+  requirePermission("case-management-config"),
+  async (req, res) => {
+    const body = req.body as { slaDueAt?: string };
+    if (!body.slaDueAt) return res.status(400).json({ error: "slaDueAt is required." });
 
-  const currentHistory = await prisma.caseStageHistory.findFirst({
-    where: { caseInstanceId: req.params.id, exitedAt: null },
-  });
-  if (!currentHistory) return res.status(404).json({ error: "No current stage history found for this case." });
+    const currentHistory = await prisma.caseStageHistory.findFirst({
+      where: { caseInstanceId: req.params.id, exitedAt: null },
+    });
+    if (!currentHistory) return res.status(404).json({ error: "No current stage history found for this case." });
 
-  const updated = await prisma.caseStageHistory.update({
-    where: { id: currentHistory.id },
-    data: { slaDueAt: new Date(body.slaDueAt) },
-  });
+    const updated = await prisma.caseStageHistory.update({
+      where: { id: currentHistory.id },
+      data: { slaDueAt: new Date(body.slaDueAt) },
+    });
 
-  res.json({ id: updated.id, slaDueAt: updated.slaDueAt.toISOString() });
-});
+    res.json({ id: updated.id, slaDueAt: updated.slaDueAt.toISOString() });
+  },
+);
 
-caseInstancesRouter.delete("/case-instances/:id", async (req, res) => {
+caseInstancesRouter.delete("/case-instances/:id", requirePermission("case-management-config"), async (req, res) => {
   const instance = await prisma.caseInstance.findUnique({ where: { id: req.params.id } });
   if (!instance) return res.status(404).json({ error: "Case instance not found." });
 

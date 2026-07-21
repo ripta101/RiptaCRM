@@ -30,6 +30,7 @@ interface ActionListEditorProps {
   stages: StageDefinition[];
   editable: boolean;
   onChanged: () => void;
+  authToken?: string | null;
 }
 
 function StageActions({
@@ -37,11 +38,13 @@ function StageActions({
   editable,
   onChanged,
   onError,
+  authToken,
 }: {
   stage: StageDefinition;
   editable: boolean;
   onChanged: () => void;
   onError: (msg: string) => void;
+  authToken?: string | null;
 }) {
   const [form, setForm] = useState({
     trigger: "AT_BREACH" as ActionTrigger,
@@ -54,16 +57,20 @@ function StageActions({
 
   async function handleAdd() {
     try {
-      await createAction(stage.id, {
-        trigger: form.trigger,
-        offsetMinutes: form.trigger === "AT_BREACH" ? 0 : Number(form.offsetMinutes),
-        config: {
-          subjectTemplate: form.subjectTemplate,
-          bodyTemplate: form.bodyTemplate,
-          recipientMode: form.recipientMode,
-          recipientValue: form.recipientMode === "STATIC" ? form.recipientValue.trim() : undefined,
+      await createAction(
+        stage.id,
+        {
+          trigger: form.trigger,
+          offsetMinutes: form.trigger === "AT_BREACH" ? 0 : Number(form.offsetMinutes),
+          config: {
+            subjectTemplate: form.subjectTemplate,
+            bodyTemplate: form.bodyTemplate,
+            recipientMode: form.recipientMode,
+            recipientValue: form.recipientMode === "STATIC" ? form.recipientValue.trim() : undefined,
+          },
         },
-      });
+        authToken,
+      );
       setForm({
         trigger: "AT_BREACH",
         offsetMinutes: "0",
@@ -80,7 +87,7 @@ function StageActions({
 
   async function handleDelete(actionId: string) {
     try {
-      await deleteAction(actionId);
+      await deleteAction(actionId, authToken);
       onChanged();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to delete action.");
@@ -214,7 +221,7 @@ function StageActions({
   );
 }
 
-export function ActionListEditor({ stages, editable, onChanged }: ActionListEditorProps) {
+export function ActionListEditor({ stages, editable, onChanged, authToken }: ActionListEditorProps) {
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -234,6 +241,7 @@ export function ActionListEditor({ stages, editable, onChanged }: ActionListEdit
             editable={editable}
             onChanged={onChanged}
             onError={setError}
+            authToken={authToken}
           />
         ))}
       {stages.length === 0 && <Typography color="text.secondary">Add stages first to configure actions.</Typography>}

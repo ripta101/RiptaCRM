@@ -4,11 +4,16 @@
  * to replace the UI interactions the specs are actually meant to exercise.
  */
 const BASE_URL = "http://localhost:4313";
+// Matches every service's INTERNAL_SERVICE_KEY dev-only fallback (see .env.e2e) — a known,
+// hardcoded value, same spirit as this file already hardcoding seeded ids like "user-1".
+const SERVICE_KEY_HEADERS = { "X-Internal-Service-Key": "dev-only-insecure-service-key-change-me" };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: init?.body ? { "Content-Type": "application/json", ...init.headers } : init?.headers,
+    headers: init?.body
+      ? { "Content-Type": "application/json", ...SERVICE_KEY_HEADERS, ...init.headers }
+      : { ...SERVICE_KEY_HEADERS, ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);

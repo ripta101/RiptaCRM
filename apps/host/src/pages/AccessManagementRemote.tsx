@@ -4,7 +4,11 @@ import { RemoteLoadErrorBoundary } from "../interactions/RemoteLoadErrorBoundary
 
 const AccessManagementModule = lazy(() => import("accessManagement/AccessManagementModule"));
 
-export function AccessManagementRemote() {
+interface AccessManagementRemoteProps {
+  authToken?: string | null;
+}
+
+export function AccessManagementRemote({ authToken }: AccessManagementRemoteProps) {
   return (
     <RemoteLoadErrorBoundary
       fallback={
@@ -21,7 +25,7 @@ export function AccessManagementRemote() {
           </Box>
         }
       >
-        <AccessManagementModule />
+        <AccessManagementModule authToken={authToken} />
       </Suspense>
     </RemoteLoadErrorBoundary>
   );

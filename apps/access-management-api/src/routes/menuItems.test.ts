@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../app";
 import { prisma } from "../db";
+import { SERVICE_KEY_HEADER } from "../testHelpers";
 
 const app = createApp();
 
@@ -14,7 +15,7 @@ afterEach(async () => {
 
 async function createIframeItem(overrides: Record<string, unknown> = {}) {
   const res = await request(app)
-    .post("/api/menu-items")
+    .post("/api/menu-items").set(SERVICE_KEY_HEADER)
     .send({ label: `Item ${randomUUID()}`, displayType: "IFRAME", iframeUrl: "https://example.com", ...overrides });
   createdMenuItemIds.push(res.body.id);
   return res;
@@ -30,18 +31,18 @@ describe("Menu item CRUD", () => {
     expect(created.body.iframeUrl).toBe("https://example.com");
     expect(created.body.remoteEntryUrl).toBeNull();
 
-    const renamed = await request(app).patch(`/api/menu-items/${created.body.id}`).send({ label: `${label} (renamed)` });
+    const renamed = await request(app).patch(`/api/menu-items/${created.body.id}`).set(SERVICE_KEY_HEADER).send({ label: `${label} (renamed)` });
     expect(renamed.status).toBe(200);
     expect(renamed.body.label).toBe(`${label} (renamed)`);
 
-    const deleted = await request(app).delete(`/api/menu-items/${created.body.id}`);
+    const deleted = await request(app).delete(`/api/menu-items/${created.body.id}`).set(SERVICE_KEY_HEADER);
     expect(deleted.status).toBe(204);
-    const deletedAgain = await request(app).delete(`/api/menu-items/${created.body.id}`);
+    const deletedAgain = await request(app).delete(`/api/menu-items/${created.body.id}`).set(SERVICE_KEY_HEADER);
     expect(deletedAgain.status).toBe(204); // idempotent
   });
 
   it("creates an MFE menu item with its remote fields", async () => {
-    const res = await request(app).post("/api/menu-items").send({
+    const res = await request(app).post("/api/menu-items").set(SERVICE_KEY_HEADER).send({
       label: `Remote ${randomUUID()}`,
       displayType: "MFE",
       remoteEntryUrl: "http://localhost:5175/remoteEntry.js",
@@ -59,32 +60,32 @@ describe("Menu item CRUD", () => {
   });
 
   it("requires a non-empty label and a valid displayType", async () => {
-    const noLabel = await request(app).post("/api/menu-items").send({ label: "", displayType: "IFRAME", iframeUrl: "https://x.com" });
+    const noLabel = await request(app).post("/api/menu-items").set(SERVICE_KEY_HEADER).send({ label: "", displayType: "IFRAME", iframeUrl: "https://x.com" });
     expect(noLabel.status).toBe(400);
-    const badType = await request(app).post("/api/menu-items").send({ label: "X", displayType: "bogus" });
+    const badType = await request(app).post("/api/menu-items").set(SERVICE_KEY_HEADER).send({ label: "X", displayType: "bogus" });
     expect(badType.status).toBe(400);
   });
 
   it("requires iframeUrl when displayType is IFRAME", async () => {
-    const res = await request(app).post("/api/menu-items").send({ label: "X", displayType: "IFRAME" });
+    const res = await request(app).post("/api/menu-items").set(SERVICE_KEY_HEADER).send({ label: "X", displayType: "IFRAME" });
     expect(res.status).toBe(400);
   });
 
   it("requires remoteEntryUrl, remoteName, and exposedModule when displayType is MFE", async () => {
     const res = await request(app)
-      .post("/api/menu-items")
+      .post("/api/menu-items").set(SERVICE_KEY_HEADER)
       .send({ label: "X", displayType: "MFE", remoteEntryUrl: "http://x.com/remoteEntry.js" });
     expect(res.status).toBe(400);
   });
 
   it("404s on an unknown menu item", async () => {
-    const res = await request(app).get("/api/menu-items/does-not-exist");
+    const res = await request(app).get("/api/menu-items/does-not-exist").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(404);
   });
 
   it("PATCH can switch displayType, validating the new type's required fields", async () => {
     const created = await createIframeItem();
-    const switched = await request(app).patch(`/api/menu-items/${created.body.id}`).send({
+    const switched = await request(app).patch(`/api/menu-items/${created.body.id}`).set(SERVICE_KEY_HEADER).send({
       displayType: "MFE",
       remoteEntryUrl: "http://localhost:5175/remoteEntry.js",
       remoteName: "caseManagement",
@@ -94,12 +95,12 @@ describe("Menu item CRUD", () => {
     expect(switched.body.displayType).toBe("MFE");
     expect(switched.body.iframeUrl).toBeNull();
 
-    const invalidSwitch = await request(app).patch(`/api/menu-items/${created.body.id}`).send({ displayType: "IFRAME" });
+    const invalidSwitch = await request(app).patch(`/api/menu-items/${created.body.id}`).set(SERVICE_KEY_HEADER).send({ displayType: "IFRAME" });
     expect(invalidSwitch.status).toBe(400); // no iframeUrl on the existing row or in the patch body
   });
 
   it("lists menu items ordered by label", async () => {
-    const res = await request(app).get("/api/menu-items");
+    const res = await request(app).get("/api/menu-items").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.results)).toBe(true);
   });

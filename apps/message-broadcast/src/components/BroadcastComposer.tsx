@@ -27,6 +27,7 @@ import { getBroadcastStatus } from "../lib/broadcastStatus";
 import { RichTextEditor } from "./RichTextEditor";
 
 interface BroadcastComposerProps {
+  authToken?: string | null;
   broadcastId: string | null;
   onDone: () => void;
 }
@@ -67,7 +68,7 @@ function defaultForm(): FormState {
   };
 }
 
-export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProps) {
+export function BroadcastComposer({ authToken, broadcastId, onDone }: BroadcastComposerProps) {
   const [form, setForm] = useState<FormState>(defaultForm());
   const [loading, setLoading] = useState(Boolean(broadcastId));
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -77,14 +78,14 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
   const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
-    listProfiles()
+    listProfiles(authToken)
       .then(setProfiles)
       .catch(() => setProfiles([]));
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
     if (!broadcastId) return;
-    getBroadcast(broadcastId)
+    getBroadcast(broadcastId, authToken)
       .then((b) => {
         setForm({
           title: b.title,
@@ -98,7 +99,7 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
       })
       .catch((err) => setLoadError(err.message))
       .finally(() => setLoading(false));
-  }, [broadcastId]);
+  }, [broadcastId, authToken]);
 
   function toggleProfile(profileId: string) {
     setForm((f) => ({
@@ -122,9 +123,9 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
         endAt: fromDatetimeLocal(form.endAt),
       };
       if (broadcastId) {
-        await updateBroadcast(broadcastId, input);
+        await updateBroadcast(broadcastId, input, authToken);
       } else {
-        await createBroadcast(input);
+        await createBroadcast(input, authToken);
       }
       onDone();
     } catch (err) {
@@ -139,7 +140,7 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
     setSaving(true);
     setSaveError(null);
     try {
-      await cancelBroadcast(broadcastId);
+      await cancelBroadcast(broadcastId, authToken);
       onDone();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to cancel broadcast.");
@@ -153,7 +154,7 @@ export function BroadcastComposer({ broadcastId, onDone }: BroadcastComposerProp
     setSaving(true);
     setSaveError(null);
     try {
-      await deleteBroadcast(broadcastId);
+      await deleteBroadcast(broadcastId, authToken);
       onDone();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to delete broadcast.");

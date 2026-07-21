@@ -25,6 +25,7 @@ Find a customer and see their history. Opens inside a new interaction tab (not a
 - Confirm a customer to open the interaction workspace: a box per confirmed customer (Customer Profile, Amend Customer, Lodge a Case) plus a generic box to search and confirm additional customers into the same interaction
 - Wrap up an interaction (via the Wrap Up button or the tab's close button) to review each confirmed customer's actions and add notes before ending it
 - "Lodge a Case" creates a real case instance in the Case Management module: pick from any published case type (shown as cards with their description), fill in that type's fields, and submit — the customer's account ID and email are attached automatically. If the case's starting stage has a queue assigned, the new case is auto-assigned to you if you're a member of that queue, otherwise it's routed to the queue and you're told so
+- Search Customer, Create Customer, Customer Profile, Amend Customer, and Lodge a Case are each their own admin-grantable Profile permission (not top-level menu items — they only make sense inside an active interaction). Search, Create, and Lodge a Case are enforced on the backend too, not just hidden in the UI — see "Authorization" in `docs/architecture.md`
 
 ### Case Management
 Lets a business admin design how cases work for the business, then runs the resulting SLA/automation engine.
@@ -43,6 +44,7 @@ Backend-only module — issues sessions for the Host's login screen; not a modul
 - The Host decodes and checks the token's expiry client-side (no network call on every page load); the token is what future SAML/SSO integration would replace or bridge into, without needing to change how the rest of the app consumes `useAuth()`
 - `GET /api/users` lists users (no password data) — used by the Case Management and Access Management modules' member pickers, proxied server-to-server rather than called directly from any browser
 - Seeded with 12 demo users, all password `Passw0rd154@`: `test` and `test1`-`test10` (assigned the "Frontline User" profile — e.g. for populating profile/queue membership with multiple distinct members) and `admin` (assigned the protected "Business Admin" profile)
+- Every route across all 5 backends (this module's `GET /api/users` included) now requires either the caller's session JWT or a trusted service-to-service key — not just a UI-level check. See "Authorization" in `docs/architecture.md` for the full model
 
 ### Access Management
 Lets a business admin control who can access what, replacing what used to be a hardcoded role.

@@ -27,6 +27,7 @@ interface StageListEditorProps {
   stages: StageDefinition[];
   editable: boolean;
   onChanged: () => void;
+  authToken?: string | null;
 }
 
 function StageRow({
@@ -36,6 +37,7 @@ function StageRow({
   editable,
   onChanged,
   onError,
+  authToken,
 }: {
   stage: StageDefinition;
   stageNameById: Map<string, string>;
@@ -43,6 +45,7 @@ function StageRow({
   editable: boolean;
   onChanged: () => void;
   onError: (msg: string) => void;
+  authToken?: string | null;
 }) {
   const [slaMinutes, setSlaMinutes] = useState(String(stage.slaMinutes));
   const [isTerminal, setIsTerminal] = useState(stage.isTerminal);
@@ -61,7 +64,7 @@ function StageRow({
     try {
       // queueId sent as "" (not undefined) when cleared — the backend treats an explicit ""
       // as "unassign," and undefined as "leave whatever it already is untouched."
-      await updateStage(stage.id, { slaMinutes: Number(slaMinutes), isTerminal, queueId });
+      await updateStage(stage.id, { slaMinutes: Number(slaMinutes), isTerminal, queueId }, authToken);
       onChanged();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to update stage.");
@@ -70,7 +73,7 @@ function StageRow({
 
   async function handleDelete() {
     try {
-      await deleteStage(stage.id);
+      await deleteStage(stage.id, authToken);
       onChanged();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to delete stage.");
@@ -154,14 +157,14 @@ function StageRow({
   );
 }
 
-export function StageListEditor({ versionId, stages, editable, onChanged }: StageListEditorProps) {
+export function StageListEditor({ versionId, stages, editable, onChanged, authToken }: StageListEditorProps) {
   const [form, setForm] = useState({ key: "", name: "", slaMinutes: "60", queueId: "" });
   const [error, setError] = useState<string | null>(null);
   const [queues, setQueues] = useState<Queue[]>([]);
 
   useEffect(() => {
-    listQueues().then(setQueues).catch(() => undefined);
-  }, []);
+    listQueues(authToken).then(setQueues).catch(() => undefined);
+  }, [authToken]);
 
   // Ordered to match the flow diagram's left-to-right layout, so dragging a node on the
   // canvas is the one and only way to reorder — no separate, driftable list ordering.
@@ -173,13 +176,17 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
   async function handleAdd() {
     setError(null);
     try {
-      await createStage(versionId, {
-        key: form.key.trim(),
-        name: form.name.trim(),
-        slaMinutes: Number(form.slaMinutes),
-        displayOrder: stages.length,
-        queueId: form.queueId || undefined,
-      });
+      await createStage(
+        versionId,
+        {
+          key: form.key.trim(),
+          name: form.name.trim(),
+          slaMinutes: Number(form.slaMinutes),
+          displayOrder: stages.length,
+          queueId: form.queueId || undefined,
+        },
+        authToken,
+      );
       setForm({ key: "", name: "", slaMinutes: "60", queueId: "" });
       onChanged();
     } catch (err) {
@@ -266,6 +273,7 @@ export function StageListEditor({ versionId, stages, editable, onChanged }: Stag
                 editable={editable}
                 onChanged={onChanged}
                 onError={setError}
+                authToken={authToken}
               />
             ))}
             {stages.length === 0 && (

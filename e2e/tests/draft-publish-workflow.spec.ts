@@ -9,6 +9,7 @@ import {
 } from "../fixtures/api";
 
 const BASE_URL = "http://localhost:4311";
+const SERVICE_KEY_HEADERS = { "X-Internal-Service-Key": "dev-only-insecure-service-key-change-me" };
 const CASE_TYPE_NAME = "E2E draft-publish";
 
 test.describe("Draft -> publish workflow", () => {
@@ -60,7 +61,7 @@ test.describe("Draft -> publish workflow", () => {
 
     // The instance created against v1 (before this draft/publish cycle) must still be
     // pinned to v1 — publishing a new version must never retroactively move it.
-    const res = await fetch(`${BASE_URL}/api/case-instances/${instanceId}`);
+    const res = await fetch(`${BASE_URL}/api/case-instances/${instanceId}`, { headers: SERVICE_KEY_HEADERS });
     const detail = await res.json();
     expect(detail.caseTypeVersionId).toBe(originalVersionId);
   });

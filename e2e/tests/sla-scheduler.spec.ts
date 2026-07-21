@@ -3,9 +3,10 @@ import { loginAsAdmin, openCaseManagement } from "../fixtures/auth";
 import { backdateCurrentStage, createCaseInstance, deleteCaseInstance, runSchedulerOnce } from "../fixtures/api";
 
 const BASE_URL = "http://localhost:4311";
+const SERVICE_KEY_HEADERS = { "X-Internal-Service-Key": "dev-only-insecure-service-key-change-me" };
 
 async function findComplaintCaseTypeId(): Promise<string> {
-  const res = await fetch(`${BASE_URL}/api/case-types`);
+  const res = await fetch(`${BASE_URL}/api/case-types`, { headers: SERVICE_KEY_HEADERS });
   const { results } = (await res.json()) as { results: { id: string; key: string }[] };
   return results.find((r) => r.key === "complaint")!.id;
 }

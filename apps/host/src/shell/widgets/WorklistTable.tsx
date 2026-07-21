@@ -24,10 +24,10 @@ export function WorklistTable() {
 
   useEffect(() => {
     if (!user) return;
-    listOpenCasesAssignedTo(user.id)
+    listOpenCasesAssignedTo(user.id, user.token)
       .then(setCases)
       .catch(() => setError(true));
-  }, [user?.id]);
+  }, [user?.id, user?.token]);
 
   if (error) {
     return <Alert severity="error">Unable to load your worklist.</Alert>;

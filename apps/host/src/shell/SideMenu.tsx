@@ -36,7 +36,7 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
   const navigate = useNavigate();
   const { setActiveTab } = useInteractions();
   const { user } = useAuth();
-  const builtInItems = ALL_NAV_ITEMS.filter((item) => user?.navItemIds.includes(item.id));
+  const builtInItems = ALL_NAV_ITEMS.filter((item) => item.path && user?.navItemIds.includes(item.id));
   const customItems: NavItem[] = (user?.customMenuItems ?? []).map((item) => ({
     id: item.id,
     label: item.label,
@@ -63,7 +63,7 @@ export function SideMenu({ open, onClose }: SideMenuProps) {
         {navItems.map((item) => {
           const Icon = item.icon ? ICONS[item.icon] : undefined;
           return (
-            <ListItemButton key={item.id} onClick={() => handleSelect(item.path)}>
+            <ListItemButton key={item.id} onClick={() => item.path && handleSelect(item.path)}>
               {Icon && (
                 <ListItemIcon>
                   <Icon />

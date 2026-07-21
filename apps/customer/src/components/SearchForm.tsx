@@ -84,7 +84,7 @@ export function SearchForm({
           />
 
           <Box sx={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: 2 }}>
-            {error && (
+            {error && onCreateCustomer && (
               <Button variant="outlined" size="large" onClick={onCreateCustomer}>
                 Create Customer
               </Button>

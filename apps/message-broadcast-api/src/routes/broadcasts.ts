@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { priorityFromLabel, toMessageBroadcastSummary } from "../lib/mappers";
 import { sanitizeBroadcastHtml } from "../lib/sanitizeBroadcastHtml";
 import { isRecordNotFoundError } from "../lib/prismaErrors";
+import { requirePermission } from "../lib/requirePermission";
 
 export const broadcastsRouter = Router();
 
@@ -16,7 +17,7 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-broadcastsRouter.get("/broadcasts/active", async (req, res) => {
+broadcastsRouter.get("/broadcasts/active", requirePermission(), async (req, res) => {
   const profileId = req.query.profileId;
   if (typeof profileId !== "string" || !profileId.trim()) {
     return res.status(400).json({ error: "profileId query parameter is required." });
@@ -36,7 +37,7 @@ broadcastsRouter.get("/broadcasts/active", async (req, res) => {
   res.json({ results: broadcasts.map(toMessageBroadcastSummary) });
 });
 
-broadcastsRouter.get("/broadcasts", async (_req, res) => {
+broadcastsRouter.get("/broadcasts", requirePermission("broadcast-config"), async (_req, res) => {
   const broadcasts = await prisma.messageBroadcast.findMany({
     orderBy: { createdAt: "desc" },
     include: INCLUDE_TARGET_PROFILES,
@@ -44,7 +45,7 @@ broadcastsRouter.get("/broadcasts", async (_req, res) => {
   res.json({ results: broadcasts.map(toMessageBroadcastSummary) });
 });
 
-broadcastsRouter.get("/broadcasts/:id", async (req, res) => {
+broadcastsRouter.get("/broadcasts/:id", requirePermission("broadcast-config"), async (req, res) => {
   const broadcast = await prisma.messageBroadcast.findUnique({
     where: { id: req.params.id },
     include: INCLUDE_TARGET_PROFILES,
@@ -53,7 +54,7 @@ broadcastsRouter.get("/broadcasts/:id", async (req, res) => {
   res.json(toMessageBroadcastSummary(broadcast));
 });
 
-broadcastsRouter.post("/broadcasts", async (req, res) => {
+broadcastsRouter.post("/broadcasts", requirePermission("broadcast-config"), async (req, res) => {
   const body = req.body as Partial<CreateMessageBroadcastInput>;
 
   if (!body.title?.trim()) {
@@ -92,7 +93,7 @@ broadcastsRouter.post("/broadcasts", async (req, res) => {
   res.status(201).json(toMessageBroadcastSummary(broadcast));
 });
 
-broadcastsRouter.patch("/broadcasts/:id", async (req, res) => {
+broadcastsRouter.patch("/broadcasts/:id", requirePermission("broadcast-config"), async (req, res) => {
   const existing = await prisma.messageBroadcast.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ error: "Broadcast not found." });
 
@@ -151,7 +152,7 @@ broadcastsRouter.patch("/broadcasts/:id", async (req, res) => {
   res.json(toMessageBroadcastSummary(broadcast));
 });
 
-broadcastsRouter.post("/broadcasts/:id/cancel", async (req, res) => {
+broadcastsRouter.post("/broadcasts/:id/cancel", requirePermission("broadcast-config"), async (req, res) => {
   const existing = await prisma.messageBroadcast.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ error: "Broadcast not found." });
 
@@ -175,7 +176,7 @@ broadcastsRouter.post("/broadcasts/:id/cancel", async (req, res) => {
   res.json(toMessageBroadcastSummary(broadcast));
 });
 
-broadcastsRouter.delete("/broadcasts/:id", async (req, res) => {
+broadcastsRouter.delete("/broadcasts/:id", requirePermission("broadcast-config"), async (req, res) => {
   try {
     await prisma.messageBroadcast.delete({ where: { id: req.params.id } });
   } catch (err) {

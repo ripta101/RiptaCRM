@@ -8,7 +8,9 @@ const FRONTLINE_PROFILE_ID = "profile-frontline-user";
 const ACCESS_MANAGEMENT_BASE_URL = "http://localhost:4314";
 
 async function getFrontlineNavItemIds(): Promise<string[]> {
-  const res = await fetch(`${ACCESS_MANAGEMENT_BASE_URL}/api/profiles/${FRONTLINE_PROFILE_ID}`);
+  const res = await fetch(`${ACCESS_MANAGEMENT_BASE_URL}/api/profiles/${FRONTLINE_PROFILE_ID}`, {
+    headers: { "X-Internal-Service-Key": "dev-only-insecure-service-key-change-me" },
+  });
   const profile = (await res.json()) as { navItemIds: string[] };
   return profile.navItemIds;
 }
@@ -49,7 +51,15 @@ test.describe("Custom menu items", () => {
     );
 
     try {
-      await setProfileNavItemIds(FRONTLINE_PROFILE_ID, [...originalNavItemIds, menuItem.id]);
+      // The custom menu item grant only controls whether the shell loads this remote —
+      // case-management-api's own routes separately require the case-management-config
+      // grant, same as the static Case Management page, so the frontline profile needs
+      // both to actually see data through the dynamically-loaded remote.
+      await setProfileNavItemIds(FRONTLINE_PROFILE_ID, [
+        ...originalNavItemIds,
+        menuItem.id,
+        "case-management-config",
+      ]);
 
       await loginAsFrontline(page);
       await page.getByRole("button", { name: "open menu" }).click();

@@ -16,6 +16,7 @@ import {
   toCaseTypeVersionSummary,
 } from "../lib/mappers";
 import { isRecordNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
+import { requirePermission } from "../lib/requirePermission";
 
 export const caseTypesRouter = Router();
 
@@ -24,7 +25,7 @@ const VERSION_DETAIL_INCLUDE = {
   stages: { include: { actions: true, transitionsFrom: true } },
 } as const;
 
-caseTypesRouter.get("/case-types", async (_req, res) => {
+caseTypesRouter.get("/case-types", requirePermission("case-management-config"), async (_req, res) => {
   const caseTypes = await prisma.caseType.findMany({
     include: { versions: true },
     orderBy: { name: "asc" },
@@ -32,7 +33,7 @@ caseTypesRouter.get("/case-types", async (_req, res) => {
   res.json({ results: caseTypes.map(toCaseTypeSummary) });
 });
 
-caseTypesRouter.post("/case-types", async (req, res) => {
+caseTypesRouter.post("/case-types", requirePermission("case-management-config"), async (req, res) => {
   const body = req.body as Partial<CreateCaseTypeInput>;
   if (!body.key?.trim() || !body.name?.trim()) {
     return res.status(400).json({ error: "key and name are required." });
@@ -59,7 +60,7 @@ caseTypesRouter.post("/case-types", async (req, res) => {
   }
 });
 
-caseTypesRouter.get("/case-types/:id", async (req, res) => {
+caseTypesRouter.get("/case-types/:id", requirePermission("case-management-config"), async (req, res) => {
   const caseType = await prisma.caseType.findUnique({
     where: { id: req.params.id },
     include: { versions: true },
@@ -68,7 +69,7 @@ caseTypesRouter.get("/case-types/:id", async (req, res) => {
   res.json(toCaseTypeSummary(caseType));
 });
 
-caseTypesRouter.delete("/case-types/:id", async (req, res) => {
+caseTypesRouter.delete("/case-types/:id", requirePermission("case-management-config"), async (req, res) => {
   const instanceCount = await prisma.caseInstance.count({ where: { caseTypeId: req.params.id } });
   if (instanceCount > 0) {
     return res.status(409).json({ error: "Cannot delete a case type that has case instances." });
@@ -82,7 +83,7 @@ caseTypesRouter.delete("/case-types/:id", async (req, res) => {
   res.status(204).end();
 });
 
-caseTypesRouter.get("/case-types/:id/versions", async (req, res) => {
+caseTypesRouter.get("/case-types/:id/versions", requirePermission("case-management-config"), async (req, res) => {
   const versions = await prisma.caseTypeVersion.findMany({
     where: { caseTypeId: req.params.id },
     orderBy: { versionNumber: "desc" },
@@ -90,7 +91,7 @@ caseTypesRouter.get("/case-types/:id/versions", async (req, res) => {
   res.json({ results: versions.map(toCaseTypeVersionSummary) });
 });
 
-caseTypesRouter.post("/case-types/:id/versions/draft", async (req, res) => {
+caseTypesRouter.post("/case-types/:id/versions/draft", requirePermission("case-management-config"), async (req, res) => {
   const caseType = await prisma.caseType.findUnique({
     where: { id: req.params.id },
     include: { versions: true },
@@ -179,7 +180,7 @@ caseTypesRouter.post("/case-types/:id/versions/draft", async (req, res) => {
   res.status(201).json(toCaseTypeVersionDetail(draft));
 });
 
-caseTypesRouter.get("/case-type-versions/:versionId", async (req, res) => {
+caseTypesRouter.get("/case-type-versions/:versionId", requirePermission("case-management-config"), async (req, res) => {
   const version = await prisma.caseTypeVersion.findUnique({
     where: { id: req.params.versionId },
     include: VERSION_DETAIL_INCLUDE,
@@ -188,7 +189,7 @@ caseTypesRouter.get("/case-type-versions/:versionId", async (req, res) => {
   res.json(toCaseTypeVersionDetail(version));
 });
 
-caseTypesRouter.post("/case-type-versions/:versionId/publish", async (req, res) => {
+caseTypesRouter.post("/case-type-versions/:versionId/publish", requirePermission("case-management-config"), async (req, res) => {
   const version = await prisma.caseTypeVersion.findUnique({
     where: { id: req.params.versionId },
     include: { stages: true },
@@ -215,7 +216,7 @@ caseTypesRouter.post("/case-type-versions/:versionId/publish", async (req, res) 
   res.json(toCaseTypeVersionSummary(published));
 });
 
-caseTypesRouter.delete("/case-type-versions/:versionId", async (req, res) => {
+caseTypesRouter.delete("/case-type-versions/:versionId", requirePermission("case-management-config"), async (req, res) => {
   const version = await prisma.caseTypeVersion.findUnique({ where: { id: req.params.versionId } });
   if (!version) return res.status(204).end(); // already gone — DELETE is idempotent
   if (version.status !== "DRAFT") {
@@ -247,7 +248,7 @@ function res404() {
   return { status: 404, body: { error: "Not found." } };
 }
 
-caseTypesRouter.post("/case-type-versions/:versionId/fields", async (req, res) => {
+caseTypesRouter.post("/case-type-versions/:versionId/fields", requirePermission("case-management-config"), async (req, res) => {
   const version = await prisma.caseTypeVersion.findUnique({ where: { id: req.params.versionId } });
   if (!version) return res.status(404).json({ error: "Case type version not found." });
   if (version.status !== "DRAFT") {
@@ -288,7 +289,7 @@ caseTypesRouter.post("/case-type-versions/:versionId/fields", async (req, res) =
   }
 });
 
-caseTypesRouter.patch("/fields/:fieldId", async (req, res) => {
+caseTypesRouter.patch("/fields/:fieldId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForField(req.params.fieldId);
   if (guard.error) return res.status(guard.error.status).json(guard.error.body);
 
@@ -314,7 +315,7 @@ caseTypesRouter.patch("/fields/:fieldId", async (req, res) => {
   });
 });
 
-caseTypesRouter.delete("/fields/:fieldId", async (req, res) => {
+caseTypesRouter.delete("/fields/:fieldId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForField(req.params.fieldId);
   if (guard.error) {
     // Already gone — DELETE is idempotent, so a missing target counts as success.
@@ -343,7 +344,7 @@ async function requireDraftVersionForStage(stageId: string) {
   return { stage };
 }
 
-caseTypesRouter.post("/case-type-versions/:versionId/stages", async (req, res) => {
+caseTypesRouter.post("/case-type-versions/:versionId/stages", requirePermission("case-management-config"), async (req, res) => {
   const version = await prisma.caseTypeVersion.findUnique({ where: { id: req.params.versionId } });
   if (!version) return res.status(404).json({ error: "Case type version not found." });
   if (version.status !== "DRAFT") {
@@ -401,7 +402,7 @@ caseTypesRouter.post("/case-type-versions/:versionId/stages", async (req, res) =
   }
 });
 
-caseTypesRouter.patch("/stages/:stageId", async (req, res) => {
+caseTypesRouter.patch("/stages/:stageId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForStage(req.params.stageId);
   if (guard.error) return res.status(guard.error.status).json(guard.error.body);
 
@@ -440,7 +441,7 @@ caseTypesRouter.patch("/stages/:stageId", async (req, res) => {
   });
 });
 
-caseTypesRouter.delete("/stages/:stageId", async (req, res) => {
+caseTypesRouter.delete("/stages/:stageId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForStage(req.params.stageId);
   if (guard.error) {
     // Already gone — DELETE is idempotent, so a missing target counts as success.
@@ -474,7 +475,7 @@ async function requireDraftVersionForTransition(transitionId: string) {
   return { transition };
 }
 
-caseTypesRouter.post("/stages/:stageId/transitions", async (req, res) => {
+caseTypesRouter.post("/stages/:stageId/transitions", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForStage(req.params.stageId);
   if (guard.error) return res.status(guard.error.status).json(guard.error.body);
 
@@ -506,7 +507,7 @@ caseTypesRouter.post("/stages/:stageId/transitions", async (req, res) => {
   }
 });
 
-caseTypesRouter.delete("/stage-transitions/:transitionId", async (req, res) => {
+caseTypesRouter.delete("/stage-transitions/:transitionId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForTransition(req.params.transitionId);
   if (guard.error) {
     // Already gone (e.g. cascaded away when the stage on the other end was deleted
@@ -525,7 +526,7 @@ caseTypesRouter.delete("/stage-transitions/:transitionId", async (req, res) => {
   res.status(204).end();
 });
 
-caseTypesRouter.post("/stages/:stageId/actions", async (req, res) => {
+caseTypesRouter.post("/stages/:stageId/actions", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForStage(req.params.stageId);
   if (guard.error) return res.status(guard.error.status).json(guard.error.body);
 
@@ -567,7 +568,7 @@ async function requireDraftVersionForAction(actionId: string) {
   return { action };
 }
 
-caseTypesRouter.patch("/actions/:actionId", async (req, res) => {
+caseTypesRouter.patch("/actions/:actionId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForAction(req.params.actionId);
   if (guard.error) return res.status(guard.error.status).json(guard.error.body);
 
@@ -593,7 +594,7 @@ caseTypesRouter.patch("/actions/:actionId", async (req, res) => {
   });
 });
 
-caseTypesRouter.delete("/actions/:actionId", async (req, res) => {
+caseTypesRouter.delete("/actions/:actionId", requirePermission("case-management-config"), async (req, res) => {
   const guard = await requireDraftVersionForAction(req.params.actionId);
   if (guard.error) {
     // Already gone — DELETE is idempotent, so a missing target counts as success.

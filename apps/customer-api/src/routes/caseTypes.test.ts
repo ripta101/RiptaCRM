@@ -1,6 +1,7 @@
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app";
+import { SERVICE_KEY_HEADER } from "../testHelpers";
 
 const app = createApp();
 
@@ -26,7 +27,7 @@ describe("GET /api/lodgeable-case-types", () => {
       }),
     });
 
-    const res = await request(app).get("/api/lodgeable-case-types");
+    const res = await request(app).get("/api/lodgeable-case-types").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(res.body.results).toHaveLength(1);
     expect(res.body.results[0].id).toBe("ct-1");
@@ -38,7 +39,7 @@ describe("GET /api/lodgeable-case-types", () => {
       vi.fn().mockRejectedValueOnce(new Error("connect ECONNREFUSED")),
     );
 
-    const res = await request(app).get("/api/lodgeable-case-types");
+    const res = await request(app).get("/api/lodgeable-case-types").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(res.body.results).toEqual([]);
   });
@@ -48,7 +49,7 @@ describe("GET /api/case-type-versions/:versionId", () => {
   it("relays a successful upstream response", async () => {
     mockFetchOnce({ ok: true, status: 200, json: async () => ({ id: "v1", fields: [], stages: [] }) });
 
-    const res = await request(app).get("/api/case-type-versions/v1");
+    const res = await request(app).get("/api/case-type-versions/v1").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ id: "v1", fields: [], stages: [] });
   });
@@ -56,7 +57,7 @@ describe("GET /api/case-type-versions/:versionId", () => {
   it("relays an upstream error rather than failing soft", async () => {
     mockFetchOnce({ ok: false, status: 404, json: async () => ({ error: "Case type version not found." }) });
 
-    const res = await request(app).get("/api/case-type-versions/does-not-exist");
+    const res = await request(app).get("/api/case-type-versions/does-not-exist").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(404);
     expect(res.body.error).toMatch(/not found/i);
   });
@@ -66,7 +67,7 @@ describe("POST /api/case-instances (proxy)", () => {
   it("relays a successful creation", async () => {
     mockFetchOnce({ ok: true, status: 201, json: async () => ({ id: "case-1", assignedToUserId: "user-1" }) });
 
-    const res = await request(app).post("/api/case-instances").send({ caseTypeId: "ct-1" });
+    const res = await request(app).post("/api/case-instances").set(SERVICE_KEY_HEADER).send({ caseTypeId: "ct-1" });
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("case-1");
   });
@@ -74,7 +75,7 @@ describe("POST /api/case-instances (proxy)", () => {
   it("relays an upstream validation error rather than failing soft", async () => {
     mockFetchOnce({ ok: false, status: 400, json: async () => ({ error: "Missing required field(s): Description" }) });
 
-    const res = await request(app).post("/api/case-instances").send({ caseTypeId: "ct-1" });
+    const res = await request(app).post("/api/case-instances").set(SERVICE_KEY_HEADER).send({ caseTypeId: "ct-1" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/missing required/i);
   });

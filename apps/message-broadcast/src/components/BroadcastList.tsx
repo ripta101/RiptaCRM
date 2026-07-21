@@ -19,6 +19,7 @@ import { listBroadcasts, listProfiles } from "../api/client";
 import { getBroadcastStatus, type BroadcastStatus } from "../lib/broadcastStatus";
 
 interface BroadcastListProps {
+  authToken?: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
 }
@@ -36,21 +37,21 @@ const PRIORITY_COLOR: Record<string, "default" | "warning" | "error"> = {
   HIGH: "error",
 };
 
-export function BroadcastList({ onSelect, onNew }: BroadcastListProps) {
+export function BroadcastList({ authToken, onSelect, onNew }: BroadcastListProps) {
   const [broadcasts, setBroadcasts] = useState<MessageBroadcastSummary[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listBroadcasts()
+    listBroadcasts(authToken)
       .then(setBroadcasts)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-    listProfiles()
+    listProfiles(authToken)
       .then(setProfiles)
       .catch(() => setProfiles([]));
-  }, []);
+  }, [authToken]);
 
   const profileNameById = new Map(profiles.map((p) => [p.id, p.name]));
 

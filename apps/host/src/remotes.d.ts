@@ -7,6 +7,8 @@ declare module "customer/CustomerLookupModule" {
     closeRequested?: boolean;
     onInteractionEnded?: () => void;
     currentUserId?: string | null;
+    authToken?: string | null;
+    grantedFeatureIds?: string[];
   }
 
   const CustomerLookupModule: ComponentType<CustomerLookupModuleProps>;
@@ -16,20 +18,32 @@ declare module "customer/CustomerLookupModule" {
 declare module "caseManagement/CaseManagementModule" {
   import type { ComponentType } from "react";
 
-  const CaseManagementModule: ComponentType;
+  export interface CaseManagementModuleProps {
+    authToken?: string | null;
+  }
+
+  const CaseManagementModule: ComponentType<CaseManagementModuleProps>;
   export default CaseManagementModule;
 }
 
 declare module "messageBroadcast/MessageBroadcastModule" {
   import type { ComponentType } from "react";
 
-  const MessageBroadcastModule: ComponentType;
+  export interface MessageBroadcastModuleProps {
+    authToken?: string | null;
+  }
+
+  const MessageBroadcastModule: ComponentType<MessageBroadcastModuleProps>;
   export default MessageBroadcastModule;
 }
 
 declare module "accessManagement/AccessManagementModule" {
   import type { ComponentType } from "react";
 
-  const AccessManagementModule: ComponentType;
+  export interface AccessManagementModuleProps {
+    authToken?: string | null;
+  }
+
+  const AccessManagementModule: ComponentType<AccessManagementModuleProps>;
   export default AccessManagementModule;
 }

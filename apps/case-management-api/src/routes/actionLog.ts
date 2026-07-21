@@ -2,10 +2,11 @@ import { Router } from "express";
 import type { Prisma } from "../../generated/prisma";
 import { prisma } from "../db";
 import { toActionLogEntry } from "../lib/mappers";
+import { requirePermission } from "../lib/requirePermission";
 
 export const actionLogRouter = Router();
 
-actionLogRouter.get("/action-log", async (req, res) => {
+actionLogRouter.get("/action-log", requirePermission("case-management-config"), async (req, res) => {
   const query = req.query as Record<string, string | undefined>;
   const where: Prisma.ActionLogEntryWhereInput = {};
 

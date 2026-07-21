@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Box, Button, List, ListItemButton, ListItemText, Paper, Typography } from "@mui/material";
+import { CUSTOMER_CREATE_FEATURE_ID, CUSTOMER_SEARCH_FEATURE_ID } from "@riptacrm/shared-types";
 import type {
   CreateCustomerInput,
   CustomerDetail,
@@ -25,6 +26,8 @@ interface InteractionWorkspaceProps {
   activeCustomerId: string | null;
   activeMenuItem: CustomerMenuItem;
   currentUserId: string | null;
+  authToken?: string | null;
+  grantedFeatureIds?: string[];
   onSelectCustomerMenu: (customerId: string, item: CustomerMenuItem) => void;
   onCustomerAdded: (detail: CustomerDetail) => void;
   onCustomerUpdated: (detail: CustomerDetail) => void;
@@ -36,12 +39,17 @@ export function InteractionWorkspace({
   activeCustomerId,
   activeMenuItem,
   currentUserId,
+  authToken,
+  grantedFeatureIds,
   onSelectCustomerMenu,
   onCustomerAdded,
   onCustomerUpdated,
   onWrapUp,
 }: InteractionWorkspaceProps) {
   const [content, setContent] = useState<WorkspaceContent>({ kind: "menu" });
+  const isGranted = (featureId: string) => grantedFeatureIds === undefined || grantedFeatureIds.includes(featureId);
+  const canSearch = isGranted(CUSTOMER_SEARCH_FEATURE_ID);
+  const canCreate = isGranted(CUSTOMER_CREATE_FEATURE_ID);
 
   const [searchParams, setSearchParams] = useState<CustomerSearchParams>({});
   const [searching, setSearching] = useState(false);
@@ -64,7 +72,7 @@ export function InteractionWorkspace({
     setSearching(true);
     setSearchError(null);
     try {
-      const results = await searchCustomers(searchParams);
+      const results = await searchCustomers(searchParams, authToken);
       if (results.length === 0) {
         setSearchError("No customers matched your search. Try adjusting the criteria.");
         return;
@@ -84,7 +92,7 @@ export function InteractionWorkspace({
     setCandidateLoading(true);
     setCandidateError(null);
     try {
-      setCandidateDetail(await getCustomerById(id));
+      setCandidateDetail(await getCustomerById(id, authToken));
     } catch (err) {
       setCandidateError(err instanceof Error ? err.message : "Failed to load customer.");
     } finally {
@@ -113,7 +121,7 @@ export function InteractionWorkspace({
     setCreating(true);
     setCreateError(null);
     try {
-      const newCustomer = await createCustomer(createParams as CreateCustomerInput);
+      const newCustomer = await createCustomer(createParams as CreateCustomerInput, authToken);
       onCustomerAdded(newCustomer);
       setContent({ kind: "menu" });
     } catch (err) {
@@ -145,14 +153,16 @@ export function InteractionWorkspace({
             <Typography variant="overline" color="text.secondary" sx={{ px: 2, pt: 2, display: "block" }}>
               Interaction
             </Typography>
-            <List dense>
-              <ListItemButton
-                selected={content.kind !== "menu"}
-                onClick={() => setContent({ kind: "search" })}
-              >
-                <ListItemText primary="Search Customer" />
-              </ListItemButton>
-            </List>
+            {canSearch && (
+              <List dense>
+                <ListItemButton
+                  selected={content.kind !== "menu"}
+                  onClick={() => setContent({ kind: "search" })}
+                >
+                  <ListItemText primary="Search Customer" />
+                </ListItemButton>
+              </List>
+            )}
           </Paper>
 
           {confirmedCustomers.map((customer) => (
@@ -161,6 +171,7 @@ export function InteractionWorkspace({
               customer={customer}
               isActive={content.kind === "menu" && customer.id === activeCustomerId}
               activeItem={activeMenuItem}
+              grantedFeatureIds={grantedFeatureIds}
               onSelect={(id, item) => {
                 onSelectCustomerMenu(id, item);
                 setContent({ kind: "menu" });
@@ -177,7 +188,12 @@ export function InteractionWorkspace({
             <ComingSoonContent title="Amend Customer" customer={activeCustomer} />
           )}
           {content.kind === "menu" && activeCustomer && activeMenuItem === "lodgeCase" && (
-            <LodgeCaseForm customer={activeCustomer} currentUserId={currentUserId} onCustomerUpdated={onCustomerUpdated} />
+            <LodgeCaseForm
+              customer={activeCustomer}
+              currentUserId={currentUserId}
+              authToken={authToken}
+              onCustomerUpdated={onCustomerUpdated}
+            />
           )}
 
           {content.kind === "search" && (
@@ -185,7 +201,7 @@ export function InteractionWorkspace({
               values={searchParams}
               onChange={handleSearchFieldChange}
               onSubmit={handleSearch}
-              onCreateCustomer={handleShowCreateForm}
+              onCreateCustomer={canCreate ? handleShowCreateForm : undefined}
               searching={searching}
               error={searchError}
             />

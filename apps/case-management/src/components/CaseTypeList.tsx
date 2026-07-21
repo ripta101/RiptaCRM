@@ -24,9 +24,10 @@ import { createCaseType, listCaseTypes } from "../api/client";
 
 interface CaseTypeListProps {
   onSelect: (caseTypeId: string) => void;
+  authToken?: string | null;
 }
 
-export function CaseTypeList({ onSelect }: CaseTypeListProps) {
+export function CaseTypeList({ onSelect, authToken }: CaseTypeListProps) {
   const [caseTypes, setCaseTypes] = useState<CaseTypeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,23 +38,26 @@ export function CaseTypeList({ onSelect }: CaseTypeListProps) {
 
   function load() {
     setLoading(true);
-    listCaseTypes()
+    listCaseTypes(authToken)
       .then(setCaseTypes)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(load, [authToken]);
 
   async function handleCreate() {
     setSaving(true);
     setSaveError(null);
     try {
-      const created = await createCaseType({
-        key: form.key.trim(),
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
-      });
+      const created = await createCaseType(
+        {
+          key: form.key.trim(),
+          name: form.name.trim(),
+          description: form.description.trim() || undefined,
+        },
+        authToken,
+      );
       setDialogOpen(false);
       setForm({ key: "", name: "", description: "" });
       onSelect(created.id);

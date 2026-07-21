@@ -32,9 +32,10 @@ import {
 interface QueueEditorProps {
   queueId: string;
   onBack: () => void;
+  authToken?: string | null;
 }
 
-export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
+export function QueueEditor({ queueId, onBack, authToken }: QueueEditorProps) {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +51,9 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
   function load() {
     setLoading(true);
     Promise.all([
-      getQueue(queueId),
-      listUsers(),
-      listCaseInstances({ assignedQueueId: queueId, unassigned: "true", status: "OPEN" }),
+      getQueue(queueId, authToken),
+      listUsers(authToken),
+      listCaseInstances({ assignedQueueId: queueId, unassigned: "true", status: "OPEN" }, authToken),
     ])
       .then(([q, u, cases]) => {
         setQueue(q);
@@ -64,13 +65,13 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [queueId]);
+  useEffect(load, [queueId, authToken]);
 
   async function handleSaveName() {
     setSaving(true);
     setMemberError(null);
     try {
-      const updated = await updateQueue(queueId, { name: name.trim() });
+      const updated = await updateQueue(queueId, { name: name.trim() }, authToken);
       setQueue(updated);
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to rename queue.");
@@ -83,7 +84,7 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
     if (!memberToAdd) return;
     setMemberError(null);
     try {
-      const updated = await addQueueMember(queueId, { userId: memberToAdd });
+      const updated = await addQueueMember(queueId, { userId: memberToAdd }, authToken);
       setQueue(updated);
       setMemberToAdd("");
     } catch (err) {
@@ -94,7 +95,7 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
   async function handleRemoveMember(userId: string) {
     setMemberError(null);
     try {
-      await removeQueueMember(queueId, userId);
+      await removeQueueMember(queueId, userId, authToken);
       setQueue((prev) => (prev ? { ...prev, memberUserIds: prev.memberUserIds.filter((id) => id !== userId) } : prev));
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to remove member.");
@@ -106,7 +107,7 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
     if (!userId) return;
     setCaseError(null);
     try {
-      await assignCaseInstance(caseInstanceId, { assignedToUserId: userId });
+      await assignCaseInstance(caseInstanceId, { assignedToUserId: userId }, authToken);
       setUnassignedCases((prev) => prev.filter((c) => c.id !== caseInstanceId));
     } catch (err) {
       setCaseError(err instanceof Error ? err.message : "Failed to assign case.");

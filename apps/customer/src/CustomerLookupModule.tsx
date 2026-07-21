@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import { Alert, Box } from "@mui/material";
+import {
+  CUSTOMER_CREATE_FEATURE_ID,
+  CUSTOMER_SEARCH_FEATURE_ID,
+} from "@riptacrm/shared-types";
 import type {
   CreateCustomerInput,
   CustomerDetail,
@@ -25,6 +30,10 @@ export interface CustomerLookupModuleProps {
   closeRequested?: boolean;
   onInteractionEnded?: () => void;
   currentUserId?: string | null;
+  authToken?: string | null;
+  // undefined defaults to all 5 features granted — keeps the standalone dev harness
+  // (StandaloneApp.tsx) usable without wiring up a fake grant list.
+  grantedFeatureIds?: string[];
 }
 
 export default function CustomerLookupModule({
@@ -32,7 +41,12 @@ export default function CustomerLookupModule({
   closeRequested,
   onInteractionEnded,
   currentUserId,
+  authToken,
+  grantedFeatureIds,
 }: CustomerLookupModuleProps) {
+  const isGranted = (featureId: string) => grantedFeatureIds === undefined || grantedFeatureIds.includes(featureId);
+  const canSearch = isGranted(CUSTOMER_SEARCH_FEATURE_ID);
+  const canCreate = isGranted(CUSTOMER_CREATE_FEATURE_ID);
   const [searchParams, setSearchParams] = useState<CustomerSearchParams>({});
   const [view, setView] = useState<View>({ mode: "search" });
   const [searching, setSearching] = useState(false);
@@ -65,7 +79,7 @@ export default function CustomerLookupModule({
     setSearching(true);
     setSearchError(null);
     try {
-      const results = await searchCustomers(searchParams);
+      const results = await searchCustomers(searchParams, authToken);
       if (results.length === 0) {
         setSearchError("No customers matched your search. Try adjusting the criteria.");
         return;
@@ -85,7 +99,7 @@ export default function CustomerLookupModule({
     setDetailLoading(true);
     setDetailError(null);
     try {
-      const customerDetail = await getCustomerById(id);
+      const customerDetail = await getCustomerById(id, authToken);
       setDetail(customerDetail);
       onCustomerIdentified?.(customerDetail);
     } catch (err) {
@@ -123,7 +137,7 @@ export default function CustomerLookupModule({
     setCreating(true);
     setCreateError(null);
     try {
-      const newCustomer = await createCustomer(createParams as CreateCustomerInput);
+      const newCustomer = await createCustomer(createParams as CreateCustomerInput, authToken);
       setView({ mode: "browse", results: [newCustomer] });
       setSelectedCustomerId(newCustomer.id);
       setDetail(newCustomer);
@@ -164,12 +178,19 @@ export default function CustomerLookupModule({
   }
 
   if (view.mode === "search") {
+    if (!canSearch) {
+      return (
+        <Box sx={{ maxWidth: 640 }}>
+          <Alert severity="warning">You don't have access to Search Customer.</Alert>
+        </Box>
+      );
+    }
     return (
       <SearchForm
         values={searchParams}
         onChange={handleFieldChange}
         onSubmit={handleSearch}
-        onCreateCustomer={handleShowCreateForm}
+        onCreateCustomer={canCreate ? handleShowCreateForm : undefined}
         searching={searching}
         error={searchError}
       />
@@ -196,6 +217,8 @@ export default function CustomerLookupModule({
         activeCustomerId={activeCustomerId}
         activeMenuItem={activeMenuItem}
         currentUserId={currentUserId ?? null}
+        authToken={authToken}
+        grantedFeatureIds={grantedFeatureIds}
         onSelectCustomerMenu={handleSelectCustomerMenu}
         onCustomerAdded={addOrActivateCustomer}
         onCustomerUpdated={handleCustomerUpdated}

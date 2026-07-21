@@ -8,7 +8,11 @@ import { QueueEditor } from "./components/QueueEditor";
 
 type TopTab = "types" | "queues" | "log";
 
-export default function CaseManagementModule() {
+interface CaseManagementModuleProps {
+  authToken?: string | null;
+}
+
+export default function CaseManagementModule({ authToken }: CaseManagementModuleProps) {
   const [tab, setTab] = useState<TopTab>("types");
   const [selectedCaseTypeId, setSelectedCaseTypeId] = useState<string | null>(null);
   const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
@@ -31,19 +35,23 @@ export default function CaseManagementModule() {
 
       {tab === "types" &&
         (selectedCaseTypeId ? (
-          <CaseTypeEditor caseTypeId={selectedCaseTypeId} onBack={() => setSelectedCaseTypeId(null)} />
+          <CaseTypeEditor
+            caseTypeId={selectedCaseTypeId}
+            onBack={() => setSelectedCaseTypeId(null)}
+            authToken={authToken}
+          />
         ) : (
-          <CaseTypeList onSelect={setSelectedCaseTypeId} />
+          <CaseTypeList onSelect={setSelectedCaseTypeId} authToken={authToken} />
         ))}
 
       {tab === "queues" &&
         (selectedQueueId ? (
-          <QueueEditor queueId={selectedQueueId} onBack={() => setSelectedQueueId(null)} />
+          <QueueEditor queueId={selectedQueueId} onBack={() => setSelectedQueueId(null)} authToken={authToken} />
         ) : (
-          <QueueList onSelect={setSelectedQueueId} />
+          <QueueList onSelect={setSelectedQueueId} authToken={authToken} />
         ))}
 
-      {tab === "log" && <ActionLogViewer />}
+      {tab === "log" && <ActionLogViewer authToken={authToken} />}
     </Box>
   );
 }

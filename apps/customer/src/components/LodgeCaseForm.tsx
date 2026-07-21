@@ -18,12 +18,13 @@ import { createCaseInstance, getCaseTypeVersion, getCustomerById, listLodgeableC
 interface LodgeCaseFormProps {
   customer: CustomerDetail;
   currentUserId: string | null;
+  authToken?: string | null;
   onCustomerUpdated: (detail: CustomerDetail) => void;
 }
 
 type FieldValue = string | number | boolean | null;
 
-export function LodgeCaseForm({ customer, currentUserId, onCustomerUpdated }: LodgeCaseFormProps) {
+export function LodgeCaseForm({ customer, currentUserId, authToken, onCustomerUpdated }: LodgeCaseFormProps) {
   const [caseTypes, setCaseTypes] = useState<CaseTypeSummary[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
 
@@ -37,17 +38,17 @@ export function LodgeCaseForm({ customer, currentUserId, onCustomerUpdated }: Lo
   const [lodged, setLodged] = useState<CaseInstanceDetail | null>(null);
 
   useEffect(() => {
-    listLodgeableCaseTypes()
+    listLodgeableCaseTypes(authToken)
       .then(setCaseTypes)
       .catch((err) => setListError(err instanceof Error ? err.message : "Failed to load case types."));
-  }, []);
+  }, [authToken]);
 
   async function handlePickType(caseType: CaseTypeSummary) {
     setSelectedType(caseType);
     setVersionLoading(true);
     setSubmitError(null);
     try {
-      const detail = await getCaseTypeVersion(caseType.publishedVersion!.id);
+      const detail = await getCaseTypeVersion(caseType.publishedVersion!.id, authToken);
       setVersionDetail(detail);
       setFieldValues({});
     } catch (err) {
@@ -70,18 +71,21 @@ export function LodgeCaseForm({ customer, currentUserId, onCustomerUpdated }: Lo
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const instance = await createCaseInstance({
-        caseTypeId: selectedType.id,
-        customerAccountId: customer.accountId,
-        contactEmail: customer.email ?? undefined,
-        lodgedByUserId: currentUserId ?? undefined,
-        fieldValues: versionDetail.fields.map((f) => ({
-          fieldDefinitionId: f.id,
-          value: fieldValues[f.id] ?? null,
-        })),
-      });
+      const instance = await createCaseInstance(
+        {
+          caseTypeId: selectedType.id,
+          customerAccountId: customer.accountId,
+          contactEmail: customer.email ?? undefined,
+          lodgedByUserId: currentUserId ?? undefined,
+          fieldValues: versionDetail.fields.map((f) => ({
+            fieldDefinitionId: f.id,
+            value: fieldValues[f.id] ?? null,
+          })),
+        },
+        authToken,
+      );
       setLodged(instance);
-      const updated = await getCustomerById(customer.id);
+      const updated = await getCustomerById(customer.id, authToken);
       onCustomerUpdated(updated);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to lodge case.");

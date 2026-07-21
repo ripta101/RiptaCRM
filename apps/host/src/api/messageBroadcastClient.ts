@@ -2,9 +2,14 @@ import type { MessageBroadcastSummary } from "@riptacrm/shared-types";
 
 const BASE_URL = import.meta.env.VITE_MESSAGE_BROADCAST_API_URL ?? "http://localhost:4313";
 
-export async function listActiveBroadcasts(profileId: string): Promise<MessageBroadcastSummary[]> {
+export async function listActiveBroadcasts(
+  profileId: string,
+  token?: string | null,
+): Promise<MessageBroadcastSummary[]> {
   const qs = new URLSearchParams({ profileId });
-  const res = await fetch(`${BASE_URL}/api/broadcasts/active?${qs.toString()}`);
+  const res = await fetch(`${BASE_URL}/api/broadcasts/active?${qs.toString()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   if (!res.ok) {
     throw new Error(`Failed to load broadcasts (${res.status})`);
   }

@@ -15,9 +15,10 @@ import { deleteMenuItem, getMenuItem, updateMenuItem } from "../api/client";
 interface MenuItemEditorProps {
   menuItemId: string;
   onBack: () => void;
+  authToken?: string | null;
 }
 
-export function MenuItemEditor({ menuItemId, onBack }: MenuItemEditorProps) {
+export function MenuItemEditor({ menuItemId, onBack, authToken }: MenuItemEditorProps) {
   const [item, setItem] = useState<CustomMenuItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export function MenuItemEditor({ menuItemId, onBack }: MenuItemEditorProps) {
 
   useEffect(() => {
     setLoading(true);
-    getMenuItem(menuItemId)
+    getMenuItem(menuItemId, authToken)
       .then((i) => {
         setItem(i);
         setLabel(i.label);
@@ -46,7 +47,7 @@ export function MenuItemEditor({ menuItemId, onBack }: MenuItemEditorProps) {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load menu item."))
       .finally(() => setLoading(false));
-  }, [menuItemId]);
+  }, [menuItemId, authToken]);
 
   const canSave =
     label.trim() &&
@@ -56,14 +57,18 @@ export function MenuItemEditor({ menuItemId, onBack }: MenuItemEditorProps) {
     setSaving(true);
     setSaveError(null);
     try {
-      const updated = await updateMenuItem(menuItemId, {
-        label: label.trim(),
-        displayType,
-        iframeUrl: displayType === "IFRAME" ? iframeUrl.trim() : undefined,
-        remoteEntryUrl: displayType === "MFE" ? remoteEntryUrl.trim() : undefined,
-        remoteName: displayType === "MFE" ? remoteName.trim() : undefined,
-        exposedModule: displayType === "MFE" ? exposedModule.trim() : undefined,
-      });
+      const updated = await updateMenuItem(
+        menuItemId,
+        {
+          label: label.trim(),
+          displayType,
+          iframeUrl: displayType === "IFRAME" ? iframeUrl.trim() : undefined,
+          remoteEntryUrl: displayType === "MFE" ? remoteEntryUrl.trim() : undefined,
+          remoteName: displayType === "MFE" ? remoteName.trim() : undefined,
+          exposedModule: displayType === "MFE" ? exposedModule.trim() : undefined,
+        },
+        authToken,
+      );
       setItem(updated);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save menu item.");
@@ -75,7 +80,7 @@ export function MenuItemEditor({ menuItemId, onBack }: MenuItemEditorProps) {
   async function handleDelete() {
     setDeleteError(null);
     try {
-      await deleteMenuItem(menuItemId);
+      await deleteMenuItem(menuItemId, authToken);
       onBack();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Failed to delete menu item.");

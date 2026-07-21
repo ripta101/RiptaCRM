@@ -37,7 +37,17 @@ async function main() {
       isProtected: false,
       dashboardType: "frontline",
       canStartInteractions: true,
-      navItems: { create: ["home", "it-support"].map((navItemId) => ({ navItemId })) },
+      navItems: {
+        create: [
+          "home",
+          "it-support",
+          "customer-search",
+          "customer-create",
+          "customer-profile",
+          "customer-amend",
+          "customer-lodge-case",
+        ].map((navItemId) => ({ navItemId })),
+      },
       members: { create: FRONTLINE_USER_IDS.map((userId) => ({ userId })) },
     },
   });

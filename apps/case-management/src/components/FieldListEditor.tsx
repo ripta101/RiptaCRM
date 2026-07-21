@@ -28,9 +28,10 @@ interface FieldListEditorProps {
   fields: FieldDefinition[];
   editable: boolean;
   onChanged: () => void;
+  authToken?: string | null;
 }
 
-export function FieldListEditor({ versionId, fields, editable, onChanged }: FieldListEditorProps) {
+export function FieldListEditor({ versionId, fields, editable, onChanged, authToken }: FieldListEditorProps) {
   const [form, setForm] = useState({
     fieldKey: "",
     name: "",
@@ -43,17 +44,21 @@ export function FieldListEditor({ versionId, fields, editable, onChanged }: Fiel
   async function handleAdd() {
     setError(null);
     try {
-      await createField(versionId, {
-        fieldKey: form.fieldKey.trim(),
-        name: form.name.trim(),
-        fieldType: form.fieldType,
-        required: form.required,
-        options:
-          form.fieldType === "SELECT"
-            ? form.options.split(",").map((o) => o.trim()).filter(Boolean)
-            : undefined,
-        displayOrder: fields.length,
-      });
+      await createField(
+        versionId,
+        {
+          fieldKey: form.fieldKey.trim(),
+          name: form.name.trim(),
+          fieldType: form.fieldType,
+          required: form.required,
+          options:
+            form.fieldType === "SELECT"
+              ? form.options.split(",").map((o) => o.trim()).filter(Boolean)
+              : undefined,
+          displayOrder: fields.length,
+        },
+        authToken,
+      );
       setForm({ fieldKey: "", name: "", fieldType: "TEXT", required: false, options: "" });
       onChanged();
     } catch (err) {
@@ -64,7 +69,7 @@ export function FieldListEditor({ versionId, fields, editable, onChanged }: Fiel
   async function handleDelete(fieldId: string) {
     setError(null);
     try {
-      await deleteField(fieldId);
+      await deleteField(fieldId, authToken);
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete field.");

@@ -27,9 +27,10 @@ import { createProfile, listProfiles } from "../api/client";
 
 interface ProfileListProps {
   onSelect: (profileId: string) => void;
+  authToken?: string | null;
 }
 
-export function ProfileList({ onSelect }: ProfileListProps) {
+export function ProfileList({ onSelect, authToken }: ProfileListProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -43,19 +44,19 @@ export function ProfileList({ onSelect }: ProfileListProps) {
 
   function load() {
     setLoading(true);
-    listProfiles(showArchived ? { includeArchived: "true" } : {})
+    listProfiles(showArchived ? { includeArchived: "true" } : {}, authToken)
       .then(setProfiles)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [showArchived]);
+  useEffect(load, [showArchived, authToken]);
 
   async function handleCreate() {
     setSaving(true);
     setSaveError(null);
     try {
-      const created = await createProfile({ name: name.trim(), dashboardType, canStartInteractions });
+      const created = await createProfile({ name: name.trim(), dashboardType, canStartInteractions }, authToken);
       setDialogOpen(false);
       setName("");
       setDashboardType("frontline");

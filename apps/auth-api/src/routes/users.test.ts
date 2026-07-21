@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../app";
 import { prisma } from "../db";
 import { hashPassword } from "../lib/passwords";
+import { SERVICE_KEY_HEADER } from "../testHelpers";
 
 const app = createApp();
 
@@ -29,7 +30,7 @@ describe("GET /api/users", () => {
   });
 
   it("returns users without their passwordHash", async () => {
-    const res = await request(app).get("/api/users");
+    const res = await request(app).get("/api/users").set(SERVICE_KEY_HEADER);
 
     expect(res.status).toBe(200);
     const found = res.body.results.find((u: { id: string }) => u.id === userId);

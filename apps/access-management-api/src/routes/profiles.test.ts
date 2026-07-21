@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../app";
 import { prisma } from "../db";
+import { SERVICE_KEY_HEADER } from "../testHelpers";
 
 const app = createApp();
 
@@ -14,7 +15,7 @@ afterEach(async () => {
 
 async function createProfile(overrides: Partial<{ name: string; dashboardType: string; canStartInteractions: boolean }> = {}) {
   const res = await request(app)
-    .post("/api/profiles")
+    .post("/api/profiles").set(SERVICE_KEY_HEADER)
     .send({ name: `Profile ${randomUUID()}`, dashboardType: "frontline", canStartInteractions: false, ...overrides });
   createdProfileIds.push(res.body.id);
   return res;
@@ -30,39 +31,39 @@ describe("Profile CRUD", () => {
     expect(created.body.memberUserIds).toEqual([]);
     expect(created.body.archivedAt).toBeNull();
 
-    const renamed = await request(app).patch(`/api/profiles/${created.body.id}`).send({ name: `${name} (renamed)` });
+    const renamed = await request(app).patch(`/api/profiles/${created.body.id}`).set(SERVICE_KEY_HEADER).send({ name: `${name} (renamed)` });
     expect(renamed.status).toBe(200);
     expect(renamed.body.name).toBe(`${name} (renamed)`);
 
-    const deleted = await request(app).delete(`/api/profiles/${created.body.id}`);
+    const deleted = await request(app).delete(`/api/profiles/${created.body.id}`).set(SERVICE_KEY_HEADER);
     expect(deleted.status).toBe(204);
-    const deletedAgain = await request(app).delete(`/api/profiles/${created.body.id}`);
+    const deletedAgain = await request(app).delete(`/api/profiles/${created.body.id}`).set(SERVICE_KEY_HEADER);
     expect(deletedAgain.status).toBe(204); // idempotent
   });
 
   it("rejects a duplicate profile name with 409", async () => {
     const name = `Duplicate ${randomUUID()}`;
     await createProfile({ name });
-    const second = await request(app).post("/api/profiles").send({ name, dashboardType: "frontline" });
+    const second = await request(app).post("/api/profiles").set(SERVICE_KEY_HEADER).send({ name, dashboardType: "frontline" });
     expect(second.status).toBe(409);
   });
 
   it("requires a non-empty name and a valid dashboardType", async () => {
-    const noName = await request(app).post("/api/profiles").send({ name: "", dashboardType: "frontline" });
+    const noName = await request(app).post("/api/profiles").set(SERVICE_KEY_HEADER).send({ name: "", dashboardType: "frontline" });
     expect(noName.status).toBe(400);
-    const badType = await request(app).post("/api/profiles").send({ name: `X ${randomUUID()}`, dashboardType: "bogus" });
+    const badType = await request(app).post("/api/profiles").set(SERVICE_KEY_HEADER).send({ name: `X ${randomUUID()}`, dashboardType: "bogus" });
     expect(badType.status).toBe(400);
   });
 
   it("PATCHes navItemIds by replacing the full set", async () => {
     const profile = await createProfile();
     const updated = await request(app)
-      .patch(`/api/profiles/${profile.body.id}`)
+      .patch(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER)
       .send({ navItemIds: ["home", "it-support"] });
     expect(updated.status).toBe(200);
     expect(updated.body.navItemIds.sort()).toEqual(["home", "it-support"]);
 
-    const replaced = await request(app).patch(`/api/profiles/${profile.body.id}`).send({ navItemIds: ["home"] });
+    const replaced = await request(app).patch(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER).send({ navItemIds: ["home"] });
     expect(replaced.status).toBe(200);
     expect(replaced.body.navItemIds).toEqual(["home"]);
   });
@@ -81,19 +82,19 @@ describe("Protected profile", () => {
   it("blocks removing the required nav item via PATCH", async () => {
     const profile = await createProtectedProfile();
     const withRequired = await request(app)
-      .patch(`/api/profiles/${profile.id}`)
+      .patch(`/api/profiles/${profile.id}`).set(SERVICE_KEY_HEADER)
       .send({ navItemIds: ["access-management-config"] });
     expect(withRequired.status).toBe(200);
 
-    const withoutRequired = await request(app).patch(`/api/profiles/${profile.id}`).send({ navItemIds: ["home"] });
+    const withoutRequired = await request(app).patch(`/api/profiles/${profile.id}`).set(SERVICE_KEY_HEADER).send({ navItemIds: ["home"] });
     expect(withoutRequired.status).toBe(400);
   });
 
   it("blocks archive and delete regardless of members", async () => {
     const profile = await createProtectedProfile();
-    const archived = await request(app).post(`/api/profiles/${profile.id}/archive`);
+    const archived = await request(app).post(`/api/profiles/${profile.id}/archive`).set(SERVICE_KEY_HEADER);
     expect(archived.status).toBe(400);
-    const deleted = await request(app).delete(`/api/profiles/${profile.id}`);
+    const deleted = await request(app).delete(`/api/profiles/${profile.id}`).set(SERVICE_KEY_HEADER);
     expect(deleted.status).toBe(400);
   });
 });
@@ -101,31 +102,31 @@ describe("Protected profile", () => {
 describe("Archive / delete guarded by membership", () => {
   it("blocks archive and delete while a profile has members, succeeds after removal", async () => {
     const profile = await createProfile();
-    await request(app).post(`/api/profiles/${profile.body.id}/members`).send({ userId: "user-1" });
+    await request(app).post(`/api/profiles/${profile.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId: "user-1" });
 
-    const archiveBlocked = await request(app).post(`/api/profiles/${profile.body.id}/archive`);
+    const archiveBlocked = await request(app).post(`/api/profiles/${profile.body.id}/archive`).set(SERVICE_KEY_HEADER);
     expect(archiveBlocked.status).toBe(409);
-    const deleteBlocked = await request(app).delete(`/api/profiles/${profile.body.id}`);
+    const deleteBlocked = await request(app).delete(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER);
     expect(deleteBlocked.status).toBe(409);
 
-    await request(app).delete(`/api/profiles/${profile.body.id}/members/user-1`);
+    await request(app).delete(`/api/profiles/${profile.body.id}/members/user-1`).set(SERVICE_KEY_HEADER);
 
-    const archived = await request(app).post(`/api/profiles/${profile.body.id}/archive`);
+    const archived = await request(app).post(`/api/profiles/${profile.body.id}/archive`).set(SERVICE_KEY_HEADER);
     expect(archived.status).toBe(200);
     expect(archived.body.archivedAt).not.toBeNull();
 
-    const archivedAgain = await request(app).post(`/api/profiles/${profile.body.id}/archive`);
+    const archivedAgain = await request(app).post(`/api/profiles/${profile.body.id}/archive`).set(SERVICE_KEY_HEADER);
     expect(archivedAgain.status).toBe(200); // idempotent, returns current state
   });
 
   it("archived profiles are excluded from the default list but included with includeArchived=true", async () => {
     const profile = await createProfile();
-    await request(app).post(`/api/profiles/${profile.body.id}/archive`);
+    await request(app).post(`/api/profiles/${profile.body.id}/archive`).set(SERVICE_KEY_HEADER);
 
-    const defaultList = await request(app).get("/api/profiles");
+    const defaultList = await request(app).get("/api/profiles").set(SERVICE_KEY_HEADER);
     expect(defaultList.body.results.some((p: { id: string }) => p.id === profile.body.id)).toBe(false);
 
-    const withArchived = await request(app).get("/api/profiles?includeArchived=true");
+    const withArchived = await request(app).get("/api/profiles?includeArchived=true").set(SERVICE_KEY_HEADER);
     expect(withArchived.body.results.some((p: { id: string }) => p.id === profile.body.id)).toBe(true);
   });
 });
@@ -134,28 +135,28 @@ describe("Profile membership", () => {
   it("adds and removes a member", async () => {
     const profile = await createProfile();
 
-    const added = await request(app).post(`/api/profiles/${profile.body.id}/members`).send({ userId: "user-1" });
+    const added = await request(app).post(`/api/profiles/${profile.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId: "user-1" });
     expect(added.status).toBe(201);
     expect(added.body.memberUserIds).toEqual(["user-1"]);
 
-    const removed = await request(app).delete(`/api/profiles/${profile.body.id}/members/user-1`);
+    const removed = await request(app).delete(`/api/profiles/${profile.body.id}/members/user-1`).set(SERVICE_KEY_HEADER);
     expect(removed.status).toBe(204);
-    const removedAgain = await request(app).delete(`/api/profiles/${profile.body.id}/members/user-1`);
+    const removedAgain = await request(app).delete(`/api/profiles/${profile.body.id}/members/user-1`).set(SERVICE_KEY_HEADER);
     expect(removedAgain.status).toBe(204); // idempotent
 
-    const final = await request(app).get(`/api/profiles/${profile.body.id}`);
+    const final = await request(app).get(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER);
     expect(final.body.memberUserIds).toEqual([]);
   });
 
   it("rejects adding the same member twice with 409", async () => {
     const profile = await createProfile();
-    await request(app).post(`/api/profiles/${profile.body.id}/members`).send({ userId: "user-1" });
-    const second = await request(app).post(`/api/profiles/${profile.body.id}/members`).send({ userId: "user-1" });
+    await request(app).post(`/api/profiles/${profile.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId: "user-1" });
+    const second = await request(app).post(`/api/profiles/${profile.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId: "user-1" });
     expect(second.status).toBe(409);
   });
 
   it("404s when adding a member to a profile that doesn't exist", async () => {
-    const res = await request(app).post("/api/profiles/does-not-exist/members").send({ userId: "user-1" });
+    const res = await request(app).post("/api/profiles/does-not-exist/members").set(SERVICE_KEY_HEADER).send({ userId: "user-1" });
     expect(res.status).toBe(404);
   });
 
@@ -163,9 +164,9 @@ describe("Profile membership", () => {
     const uid = `u-${randomUUID()}`;
     const profileA = await createProfile();
     const profileB = await createProfile();
-    await request(app).post(`/api/profiles/${profileA.body.id}/members`).send({ userId: uid });
+    await request(app).post(`/api/profiles/${profileA.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId: uid });
 
-    const res = await request(app).get(`/api/profiles?userId=${uid}`);
+    const res = await request(app).get(`/api/profiles?userId=${uid}`).set(SERVICE_KEY_HEADER);
     const ids = res.body.results.map((p: { id: string }) => p.id);
     expect(ids).toContain(profileA.body.id);
     expect(ids).not.toContain(profileB.body.id);
@@ -187,7 +188,7 @@ describe("Custom menu items in Profile response", () => {
 
     const profile = await createProfile();
     const updated = await request(app)
-      .patch(`/api/profiles/${profile.body.id}`)
+      .patch(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER)
       .send({ navItemIds: ["home", menuItem.id] });
 
     expect(updated.status).toBe(200);
@@ -203,10 +204,10 @@ describe("Custom menu items in Profile response", () => {
     });
 
     const profile = await createProfile();
-    await request(app).patch(`/api/profiles/${profile.body.id}`).send({ navItemIds: [menuItem.id] });
+    await request(app).patch(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER).send({ navItemIds: [menuItem.id] });
     await prisma.menuItem.delete({ where: { id: menuItem.id } });
 
-    const res = await request(app).get(`/api/profiles/${profile.body.id}`);
+    const res = await request(app).get(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(res.body.navItemIds).toEqual([menuItem.id]); // still granted — just no longer resolvable
     expect(res.body.customMenuItems).toEqual([]);
@@ -217,7 +218,7 @@ describe("GET /users proxy", () => {
   it("fails soft to an empty list when auth-api is unreachable", async () => {
     // AUTH_API_URL in .env.test points at the real auth-api port; if it's not running in
     // this test run, the proxy should degrade gracefully rather than 500.
-    const res = await request(app).get("/api/users");
+    const res = await request(app).get("/api/users").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.results)).toBe(true);
   });

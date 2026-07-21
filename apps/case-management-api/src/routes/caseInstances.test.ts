@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../app";
 import { prisma } from "../db";
+import { SERVICE_KEY_HEADER } from "../testHelpers";
 
 const app = createApp();
 
@@ -65,7 +66,7 @@ describe("POST /api/case-instances/:id/transitions", () => {
   });
 
   it("rejects a transition with no configured StageTransition edge", async () => {
-    const res = await request(app).post(`/api/case-instances/${instanceId}/transitions`).send({ toStageId: stageCId });
+    const res = await request(app).post(`/api/case-instances/${instanceId}/transitions`).set(SERVICE_KEY_HEADER).send({ toStageId: stageCId });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/not allowed/i);
@@ -75,7 +76,7 @@ describe("POST /api/case-instances/:id/transitions", () => {
   });
 
   it("accepts a transition along a configured edge and closes out the prior stage history", async () => {
-    const res = await request(app).post(`/api/case-instances/${instanceId}/transitions`).send({ toStageId: stageBId });
+    const res = await request(app).post(`/api/case-instances/${instanceId}/transitions`).set(SERVICE_KEY_HEADER).send({ toStageId: stageBId });
 
     expect(res.status).toBe(200);
     expect(res.body.currentStageId).toBe(stageBId);
@@ -109,7 +110,7 @@ describe("POST /api/case-instances/:id/transitions", () => {
     try {
       const otherStageId = otherCaseType.versions[0].stages[0].id;
       const res = await request(app)
-        .post(`/api/case-instances/${instanceId}/transitions`)
+        .post(`/api/case-instances/${instanceId}/transitions`).set(SERVICE_KEY_HEADER)
         .send({ toStageId: otherStageId });
 
       expect(res.status).toBe(400);
@@ -155,7 +156,7 @@ describe("POST /api/case-instances — queue routing", () => {
 
   it("leaves a case unassigned when the stage has no queue, even with lodgedByUserId sent", async () => {
     const res = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-lodging" });
 
     expect(res.status).toBe(201);
@@ -168,7 +169,7 @@ describe("POST /api/case-instances — queue routing", () => {
     await prisma.queueMember.create({ data: { queueId, userId: "user-lodging" } });
 
     const res = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-lodging" });
 
     expect(res.status).toBe(201);
@@ -180,7 +181,7 @@ describe("POST /api/case-instances — queue routing", () => {
     await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId } });
 
     const res = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
 
     expect(res.status).toBe(201);
@@ -193,7 +194,7 @@ describe("POST /api/case-instances — queue routing", () => {
     // Deliberately NOT a member — proves the explicit value isn't second-guessed.
 
     const res = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, assignedToUserId: "user-explicit", lodgedByUserId: "user-not-a-member" });
 
     expect(res.status).toBe(201);
@@ -204,7 +205,7 @@ describe("POST /api/case-instances — queue routing", () => {
   it("leaves a case unassigned when lodgedByUserId is absent, even with a queue on the stage", async () => {
     await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId } });
 
-    const res = await request(app).post("/api/case-instances").send({ caseTypeId });
+    const res = await request(app).post("/api/case-instances").set(SERVICE_KEY_HEADER).send({ caseTypeId });
 
     expect(res.status).toBe(201);
     expect(res.body.assignedToUserId).toBeNull();
@@ -254,19 +255,19 @@ describe("Queue allocation", () => {
 
   it("GET /case-instances?assignedQueueId=&unassigned=true returns only that queue's unassigned cases", async () => {
     const routedToA = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
     const assignedDirectly = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, assignedToUserId: "user-x" });
 
     await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId: queueBId } });
     const routedToB = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-not-a-member-2" });
     await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId: queueAId } });
 
-    const res = await request(app).get(`/api/case-instances?assignedQueueId=${queueAId}&unassigned=true`);
+    const res = await request(app).get(`/api/case-instances?assignedQueueId=${queueAId}&unassigned=true`).set(SERVICE_KEY_HEADER);
 
     expect(res.status).toBe(200);
     const ids = res.body.results.map((c: { id: string }) => c.id);
@@ -277,11 +278,11 @@ describe("Queue allocation", () => {
 
   it("PATCH /case-instances/:id/assignment sets assignedToUserId", async () => {
     const created = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
 
     const res = await request(app)
-      .patch(`/api/case-instances/${created.body.id}/assignment`)
+      .patch(`/api/case-instances/${created.body.id}/assignment`).set(SERVICE_KEY_HEADER)
       .send({ assignedToUserId: "user-picked" });
 
     expect(res.status).toBe(200);
@@ -290,11 +291,11 @@ describe("Queue allocation", () => {
 
   it("rejects a blank assignedToUserId with 400", async () => {
     const created = await request(app)
-      .post("/api/case-instances")
+      .post("/api/case-instances").set(SERVICE_KEY_HEADER)
       .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
 
     const res = await request(app)
-      .patch(`/api/case-instances/${created.body.id}/assignment`)
+      .patch(`/api/case-instances/${created.body.id}/assignment`).set(SERVICE_KEY_HEADER)
       .send({ assignedToUserId: "" });
 
     expect(res.status).toBe(400);
@@ -302,7 +303,7 @@ describe("Queue allocation", () => {
 
   it("404s when assigning a case instance that doesn't exist", async () => {
     const res = await request(app)
-      .patch("/api/case-instances/does-not-exist/assignment")
+      .patch("/api/case-instances/does-not-exist/assignment").set(SERVICE_KEY_HEADER)
       .send({ assignedToUserId: "user-picked" });
 
     expect(res.status).toBe(404);

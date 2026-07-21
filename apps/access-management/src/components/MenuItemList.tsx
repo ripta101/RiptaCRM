@@ -25,9 +25,10 @@ import { createMenuItem, listMenuItems } from "../api/client";
 
 interface MenuItemListProps {
   onSelect: (menuItemId: string) => void;
+  authToken?: string | null;
 }
 
-export function MenuItemList({ onSelect }: MenuItemListProps) {
+export function MenuItemList({ onSelect, authToken }: MenuItemListProps) {
   const [items, setItems] = useState<CustomMenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +44,13 @@ export function MenuItemList({ onSelect }: MenuItemListProps) {
 
   function load() {
     setLoading(true);
-    listMenuItems()
+    listMenuItems(authToken)
       .then(setItems)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(load, [authToken]);
 
   function resetForm() {
     setLabel("");
@@ -68,14 +69,17 @@ export function MenuItemList({ onSelect }: MenuItemListProps) {
     setSaving(true);
     setSaveError(null);
     try {
-      const created = await createMenuItem({
-        label: label.trim(),
-        displayType,
-        iframeUrl: displayType === "IFRAME" ? iframeUrl.trim() : undefined,
-        remoteEntryUrl: displayType === "MFE" ? remoteEntryUrl.trim() : undefined,
-        remoteName: displayType === "MFE" ? remoteName.trim() : undefined,
-        exposedModule: displayType === "MFE" ? exposedModule.trim() : undefined,
-      });
+      const created = await createMenuItem(
+        {
+          label: label.trim(),
+          displayType,
+          iframeUrl: displayType === "IFRAME" ? iframeUrl.trim() : undefined,
+          remoteEntryUrl: displayType === "MFE" ? remoteEntryUrl.trim() : undefined,
+          remoteName: displayType === "MFE" ? remoteName.trim() : undefined,
+          exposedModule: displayType === "MFE" ? exposedModule.trim() : undefined,
+        },
+        authToken,
+      );
       setDialogOpen(false);
       resetForm();
       onSelect(created.id);

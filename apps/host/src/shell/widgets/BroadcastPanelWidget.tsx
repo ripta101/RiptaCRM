@@ -22,7 +22,7 @@ export function BroadcastPanelWidget() {
     let cancelled = false;
 
     function load() {
-      listActiveBroadcasts(user!.profileId)
+      listActiveBroadcasts(user!.profileId, user!.token)
         .then((results) => {
           if (!cancelled) {
             setBroadcasts(results);

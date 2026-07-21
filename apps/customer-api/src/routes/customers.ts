@@ -1,17 +1,22 @@
 import { Router } from "express";
 import { Prisma } from "../../generated/prisma";
+import { CUSTOMER_CREATE_FEATURE_ID, CUSTOMER_SEARCH_FEATURE_ID } from "@riptacrm/shared-types";
 import type { CaseInstanceSummary, CreateCustomerInput, CustomerSearchResponse } from "@riptacrm/shared-types";
 import { prisma } from "../db";
 import { toCustomerDetail, toCustomerSummary } from "../lib/mappers";
+import { requirePermission } from "../lib/requirePermission";
 
 export const customersRouter = Router();
 
 const CASE_MANAGEMENT_API_URL = process.env.CASE_MANAGEMENT_API_URL ?? "http://localhost:4311";
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "dev-only-insecure-service-key-change-me";
 
 async function fetchOpenCasesForAccount(accountId: string): Promise<CaseInstanceSummary[]> {
   try {
     const qs = new URLSearchParams({ customerAccountId: accountId, status: "OPEN" });
-    const res = await fetch(`${CASE_MANAGEMENT_API_URL}/api/case-instances?${qs.toString()}`);
+    const res = await fetch(`${CASE_MANAGEMENT_API_URL}/api/case-instances?${qs.toString()}`, {
+      headers: { "X-Internal-Service-Key": INTERNAL_SERVICE_KEY },
+    });
     if (!res.ok) return [];
     const data: { results: CaseInstanceSummary[] } = await res.json();
     return data.results;
@@ -53,7 +58,7 @@ const CONTAINS_FIELDS = [
   "companyName",
 ] as const;
 
-customersRouter.get("/search", async (req, res) => {
+customersRouter.get("/search", requirePermission(CUSTOMER_SEARCH_FEATURE_ID), async (req, res) => {
   const query = req.query as Record<string, string | undefined>;
 
   const where: Prisma.CustomerWhereInput = {};
@@ -91,7 +96,7 @@ customersRouter.get("/search", async (req, res) => {
   res.json(response);
 });
 
-customersRouter.get("/:id", async (req, res) => {
+customersRouter.get("/:id", requirePermission(CUSTOMER_SEARCH_FEATURE_ID), async (req, res) => {
   const customer = await prisma.customer.findUnique({
     where: { id: req.params.id },
     include: {
@@ -107,7 +112,7 @@ customersRouter.get("/:id", async (req, res) => {
   res.json(toCustomerDetail(customer, cases));
 });
 
-customersRouter.post("/", async (req, res) => {
+customersRouter.post("/", requirePermission(CUSTOMER_CREATE_FEATURE_ID), async (req, res) => {
   const body = req.body as Partial<CreateCustomerInput>;
 
   const missing = REQUIRED_CREATE_FIELDS.filter((field) => !body[field]?.toString().trim());

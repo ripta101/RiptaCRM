@@ -4,7 +4,11 @@ import { RemoteLoadErrorBoundary } from "../interactions/RemoteLoadErrorBoundary
 
 const CaseManagementModule = lazy(() => import("caseManagement/CaseManagementModule"));
 
-export function CaseManagementRemote() {
+interface CaseManagementRemoteProps {
+  authToken?: string | null;
+}
+
+export function CaseManagementRemote({ authToken }: CaseManagementRemoteProps) {
   return (
     <RemoteLoadErrorBoundary
       fallback={
@@ -21,7 +25,7 @@ export function CaseManagementRemote() {
           </Box>
         }
       >
-        <CaseManagementModule />
+        <CaseManagementModule authToken={authToken} />
       </Suspense>
     </RemoteLoadErrorBoundary>
   );

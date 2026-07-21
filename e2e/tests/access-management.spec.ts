@@ -48,7 +48,9 @@ test.describe("Access Management", () => {
     } finally {
       // Resolve the throwaway profile's id via the admin list (created via the UI, not
       // the API fixture, so we look it up by name before cleaning up).
-      const res = await fetch(`http://localhost:4314/api/profiles?includeArchived=true`);
+      const res = await fetch(`http://localhost:4314/api/profiles?includeArchived=true`, {
+        headers: { "X-Internal-Service-Key": "dev-only-insecure-service-key-change-me" },
+      });
       const { results } = (await res.json()) as { results: { id: string; name: string }[] };
       const found = results.find((p) => p.name === name);
       if (found) await deleteProfile(found.id);

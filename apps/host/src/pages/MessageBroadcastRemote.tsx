@@ -4,7 +4,11 @@ import { RemoteLoadErrorBoundary } from "../interactions/RemoteLoadErrorBoundary
 
 const MessageBroadcastModule = lazy(() => import("messageBroadcast/MessageBroadcastModule"));
 
-export function MessageBroadcastRemote() {
+interface MessageBroadcastRemoteProps {
+  authToken?: string | null;
+}
+
+export function MessageBroadcastRemote({ authToken }: MessageBroadcastRemoteProps) {
   return (
     <RemoteLoadErrorBoundary
       fallback={
@@ -21,7 +25,7 @@ export function MessageBroadcastRemote() {
           </Box>
         }
       >
-        <MessageBroadcastModule />
+        <MessageBroadcastModule authToken={authToken} />
       </Suspense>
     </RemoteLoadErrorBoundary>
   );

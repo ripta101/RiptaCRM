@@ -23,9 +23,10 @@ import { createQueue, listQueues } from "../api/client";
 
 interface QueueListProps {
   onSelect: (queueId: string) => void;
+  authToken?: string | null;
 }
 
-export function QueueList({ onSelect }: QueueListProps) {
+export function QueueList({ onSelect, authToken }: QueueListProps) {
   const [queues, setQueues] = useState<Queue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,19 +37,19 @@ export function QueueList({ onSelect }: QueueListProps) {
 
   function load() {
     setLoading(true);
-    listQueues()
+    listQueues(authToken)
       .then(setQueues)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(load, [authToken]);
 
   async function handleCreate() {
     setSaving(true);
     setSaveError(null);
     try {
-      const created = await createQueue({ name: name.trim() });
+      const created = await createQueue({ name: name.trim() }, authToken);
       setDialogOpen(false);
       setName("");
       onSelect(created.id);

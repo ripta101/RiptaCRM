@@ -10,7 +10,11 @@ interface DynamicRemoteProps {
   session: AuthSession;
 }
 
-type RemoteComponent = ComponentType<{ session: AuthSession }>;
+// Dynamically-loaded remotes may be built against either contract: the full `session`
+// object (this widget's original contract) or the narrower `authToken` prop the app's own
+// statically-declared remotes (Customer, Case Management, ...) now expect post-authorization-
+// refactor. Passing both keeps a remote exposing either prop shape working.
+type RemoteComponent = ComponentType<{ session?: AuthSession; authToken?: string | null }>;
 
 // Loads a Module Federation remote whose URL wasn't known until an admin typed it into a
 // custom menu item — distinct from the app's other remotes (Customer, Case Management, ...),
@@ -67,5 +71,5 @@ export function DynamicRemote({ entryUrl, remoteName, exposedModule, session }: 
     );
   }
 
-  return <Comp session={session} />;
+  return <Comp session={session} authToken={session.token} />;
 }

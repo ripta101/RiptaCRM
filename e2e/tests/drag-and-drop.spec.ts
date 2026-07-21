@@ -4,6 +4,7 @@ import { createThrowawayCaseType, deleteCaseType } from "../fixtures/api";
 import { connectNodes, dragNode, dragNodePastNode, selectAndDeleteNode } from "../fixtures/dnd";
 
 const BASE_URL = "http://localhost:4311";
+const SERVICE_KEY_HEADERS = { "X-Internal-Service-Key": "dev-only-insecure-service-key-change-me" };
 const CASE_TYPE_NAME = "E2E drag-and-drop";
 
 interface StageRef {
@@ -14,7 +15,7 @@ interface StageRef {
 }
 
 async function getStages(versionId: string): Promise<StageRef[]> {
-  const res = await fetch(`${BASE_URL}/api/case-type-versions/${versionId}`);
+  const res = await fetch(`${BASE_URL}/api/case-type-versions/${versionId}`, { headers: SERVICE_KEY_HEADERS });
   const version = await res.json();
   return version.stages;
 }

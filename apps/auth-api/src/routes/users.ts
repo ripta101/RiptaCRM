@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { prisma } from "../db";
+import { requirePermission } from "../lib/requirePermission";
 
 export const usersRouter = Router();
 
-usersRouter.get("/users", async (_req, res) => {
+usersRouter.get("/users", requirePermission(), async (_req, res) => {
   const users = await prisma.user.findMany({ orderBy: { name: "asc" } });
   res.json({
     results: users.map((u) => ({

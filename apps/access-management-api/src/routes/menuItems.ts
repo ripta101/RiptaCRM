@@ -3,6 +3,7 @@ import type { CreateMenuItemInput, MenuItemDisplayType, UpdateMenuItemInput } fr
 import { prisma } from "../db";
 import { toCustomMenuItem } from "../lib/mappers";
 import { isRecordNotFoundError } from "../lib/prismaErrors";
+import { requirePermission } from "../lib/requirePermission";
 
 export const menuItemsRouter = Router();
 
@@ -18,12 +19,12 @@ function validationError(body: Partial<CreateMenuItemInput | UpdateMenuItemInput
   return null;
 }
 
-menuItemsRouter.get("/menu-items", async (_req, res) => {
+menuItemsRouter.get("/menu-items", requirePermission("access-management-config"), async (_req, res) => {
   const items = await prisma.menuItem.findMany({ orderBy: { label: "asc" } });
   res.json({ results: items.map(toCustomMenuItem) });
 });
 
-menuItemsRouter.post("/menu-items", async (req, res) => {
+menuItemsRouter.post("/menu-items", requirePermission("access-management-config"), async (req, res) => {
   const body = req.body as Partial<CreateMenuItemInput>;
   if (!body.label?.trim()) {
     return res.status(400).json({ error: "label is required." });
@@ -47,13 +48,13 @@ menuItemsRouter.post("/menu-items", async (req, res) => {
   res.status(201).json(toCustomMenuItem(item));
 });
 
-menuItemsRouter.get("/menu-items/:id", async (req, res) => {
+menuItemsRouter.get("/menu-items/:id", requirePermission("access-management-config"), async (req, res) => {
   const item = await prisma.menuItem.findUnique({ where: { id: req.params.id } });
   if (!item) return res.status(404).json({ error: "Menu item not found." });
   res.json(toCustomMenuItem(item));
 });
 
-menuItemsRouter.patch("/menu-items/:id", async (req, res) => {
+menuItemsRouter.patch("/menu-items/:id", requirePermission("access-management-config"), async (req, res) => {
   const existing = await prisma.menuItem.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ error: "Menu item not found." });
 
@@ -88,7 +89,7 @@ menuItemsRouter.patch("/menu-items/:id", async (req, res) => {
   res.json(toCustomMenuItem(item));
 });
 
-menuItemsRouter.delete("/menu-items/:id", async (req, res) => {
+menuItemsRouter.delete("/menu-items/:id", requirePermission("access-management-config"), async (req, res) => {
   try {
     await prisma.menuItem.delete({ where: { id: req.params.id } });
   } catch (err) {

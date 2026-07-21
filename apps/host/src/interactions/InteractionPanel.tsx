@@ -22,6 +22,8 @@ export function InteractionPanel({ tab }: InteractionPanelProps) {
           closeRequested={closeRequestedTabId === tab.id}
           onInteractionEnded={() => closeInteraction(tab.id)}
           currentUserId={user?.id ?? null}
+          authToken={user?.token ?? null}
+          grantedFeatureIds={user?.navItemIds}
         />
       );
     default:

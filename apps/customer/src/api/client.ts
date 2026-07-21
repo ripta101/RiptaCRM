@@ -12,11 +12,11 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_CUSTOMER_API_URL ?? "http://localhost:4310";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: init?.body ? { "Content-Type": "application/json", ...init.headers } : init?.headers,
-  });
+async function request<T>(path: string, init?: RequestInit, token?: string | null): Promise<T> {
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> | undefined) };
+  if (init?.body) headers["Content-Type"] = "application/json";
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error ?? `Request failed (${res.status})`);
@@ -25,24 +25,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function searchCustomers(params: CustomerSearchParams): Promise<CustomerSummary[]> {
+export async function searchCustomers(
+  params: CustomerSearchParams,
+  token?: string | null,
+): Promise<CustomerSummary[]> {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value) qs.set(key, value);
   }
-  const data = await request<CustomerSearchResponse>(`/api/customers/search?${qs.toString()}`);
+  const data = await request<CustomerSearchResponse>(`/api/customers/search?${qs.toString()}`, undefined, token);
   return data.results;
 }
 
-export const getCustomerById = (id: string) => request<CustomerDetail>(`/api/customers/${id}`);
+export const getCustomerById = (id: string, token?: string | null) =>
+  request<CustomerDetail>(`/api/customers/${id}`, undefined, token);
 
-export const createCustomer = (input: CreateCustomerInput) =>
-  request<CustomerDetail>("/api/customers", { method: "POST", body: JSON.stringify(input) });
+export const createCustomer = (input: CreateCustomerInput, token?: string | null) =>
+  request<CustomerDetail>("/api/customers", { method: "POST", body: JSON.stringify(input) }, token);
 
 // Case lodging (proxied server-to-server by customer-api to case-management-api)
-export const listLodgeableCaseTypes = () =>
-  request<{ results: CaseTypeSummary[] }>("/api/lodgeable-case-types").then((r) => r.results);
-export const getCaseTypeVersion = (versionId: string) =>
-  request<CaseTypeVersionDetail>(`/api/case-type-versions/${versionId}`);
-export const createCaseInstance = (input: CreateCaseInstanceInput) =>
-  request<CaseInstanceDetail>("/api/case-instances", { method: "POST", body: JSON.stringify(input) });
+export const listLodgeableCaseTypes = (token?: string | null) =>
+  request<{ results: CaseTypeSummary[] }>("/api/lodgeable-case-types", undefined, token).then((r) => r.results);
+export const getCaseTypeVersion = (versionId: string, token?: string | null) =>
+  request<CaseTypeVersionDetail>(`/api/case-type-versions/${versionId}`, undefined, token);
+export const createCaseInstance = (input: CreateCaseInstanceInput, token?: string | null) =>
+  request<CaseInstanceDetail>("/api/case-instances", { method: "POST", body: JSON.stringify(input) }, token);

@@ -8,7 +8,11 @@ import { MenuItemEditor } from "./components/MenuItemEditor";
 
 type TopTab = "profiles" | "users" | "menuItems";
 
-export default function AccessManagementModule() {
+interface AccessManagementModuleProps {
+  authToken?: string | null;
+}
+
+export default function AccessManagementModule({ authToken }: AccessManagementModuleProps) {
   const [tab, setTab] = useState<TopTab>("profiles");
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | null>(null);
@@ -31,18 +35,26 @@ export default function AccessManagementModule() {
 
       {tab === "profiles" &&
         (selectedProfileId ? (
-          <ProfileEditor profileId={selectedProfileId} onBack={() => setSelectedProfileId(null)} />
+          <ProfileEditor
+            profileId={selectedProfileId}
+            onBack={() => setSelectedProfileId(null)}
+            authToken={authToken}
+          />
         ) : (
-          <ProfileList onSelect={setSelectedProfileId} />
+          <ProfileList onSelect={setSelectedProfileId} authToken={authToken} />
         ))}
 
-      {tab === "users" && <UsersOverview />}
+      {tab === "users" && <UsersOverview authToken={authToken} />}
 
       {tab === "menuItems" &&
         (selectedMenuItemId ? (
-          <MenuItemEditor menuItemId={selectedMenuItemId} onBack={() => setSelectedMenuItemId(null)} />
+          <MenuItemEditor
+            menuItemId={selectedMenuItemId}
+            onBack={() => setSelectedMenuItemId(null)}
+            authToken={authToken}
+          />
         ) : (
-          <MenuItemList onSelect={setSelectedMenuItemId} />
+          <MenuItemList onSelect={setSelectedMenuItemId} authToken={authToken} />
         ))}
     </Box>
   );

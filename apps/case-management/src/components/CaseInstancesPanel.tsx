@@ -39,6 +39,7 @@ import { DynamicFieldForm, formatDateTime } from "@riptacrm/ui";
 interface CaseInstancesPanelProps {
   caseTypeId: string;
   publishedVersion: CaseTypeVersionSummary | null;
+  authToken?: string | null;
 }
 
 function AdvanceCell({
@@ -46,11 +47,13 @@ function AdvanceCell({
   version,
   onChanged,
   onError,
+  authToken,
 }: {
   instance: CaseInstanceSummary;
   version: CaseTypeVersionDetail | undefined;
   onChanged: () => void;
   onError: (msg: string) => void;
+  authToken?: string | null;
 }) {
   const [toStageId, setToStageId] = useState("");
 
@@ -63,7 +66,7 @@ function AdvanceCell({
   async function handleGo() {
     if (!toStageId) return;
     try {
-      await transitionCaseInstance(instance.id, { toStageId });
+      await transitionCaseInstance(instance.id, { toStageId }, authToken);
       setToStageId("");
       onChanged();
     } catch (err) {
@@ -96,7 +99,7 @@ function AdvanceCell({
   );
 }
 
-export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstancesPanelProps) {
+export function CaseInstancesPanel({ caseTypeId, publishedVersion, authToken }: CaseInstancesPanelProps) {
   const [instances, setInstances] = useState<CaseInstanceSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,14 +117,16 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
   async function load() {
     setLoading(true);
     try {
-      const results = await listCaseInstances({ caseTypeId });
+      const results = await listCaseInstances({ caseTypeId }, authToken);
       setInstances(results);
 
       const uncachedVersionIds = [...new Set(results.map((i) => i.caseTypeVersionId))].filter(
         (id) => !versionCache[id],
       );
       if (uncachedVersionIds.length > 0) {
-        const fetched = await Promise.all(uncachedVersionIds.map((id) => getCaseTypeVersion(id)));
+        const fetched = await Promise.all(
+          uncachedVersionIds.map((id) => getCaseTypeVersion(id, authToken)),
+        );
         setVersionCache((cache) => {
           const next = { ...cache };
           for (const v of fetched) next[v.id] = v;
@@ -137,11 +142,11 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
 
   useEffect(() => {
     load();
-  }, [caseTypeId]);
+  }, [caseTypeId, authToken]);
 
   async function openDialog() {
     if (!publishedVersion) return;
-    const detail = await getCaseTypeVersion(publishedVersion.id);
+    const detail = await getCaseTypeVersion(publishedVersion.id, authToken);
     setVersionDetail(detail);
     setValues({});
     setCustomerAccountId("");
@@ -155,16 +160,19 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
     if (!versionDetail) return;
     setSaveError(null);
     try {
-      await createCaseInstance({
-        caseTypeId,
-        customerAccountId: customerAccountId.trim() || undefined,
-        assignedToUserId: assignedToUserId.trim() || undefined,
-        contactEmail: contactEmail.trim() || undefined,
-        fieldValues: versionDetail.fields.map((f) => ({
-          fieldDefinitionId: f.id,
-          value: values[f.id] ?? null,
-        })),
-      });
+      await createCaseInstance(
+        {
+          caseTypeId,
+          customerAccountId: customerAccountId.trim() || undefined,
+          assignedToUserId: assignedToUserId.trim() || undefined,
+          contactEmail: contactEmail.trim() || undefined,
+          fieldValues: versionDetail.fields.map((f) => ({
+            fieldDefinitionId: f.id,
+            value: values[f.id] ?? null,
+          })),
+        },
+        authToken,
+      );
       setDialogOpen(false);
       load();
     } catch (err) {
@@ -173,7 +181,7 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
   }
 
   async function handleDelete(id: string) {
-    await deleteCaseInstance(id);
+    await deleteCaseInstance(id, authToken);
     load();
   }
 
@@ -237,6 +245,7 @@ export function CaseInstancesPanel({ caseTypeId, publishedVersion }: CaseInstanc
                       version={versionCache[i.caseTypeVersionId]}
                       onChanged={load}
                       onError={setAdvanceError}
+                      authToken={authToken}
                     />
                   </TableCell>
                   <TableCell align="right">

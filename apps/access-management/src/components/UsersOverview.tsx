@@ -5,7 +5,11 @@ import { listProfiles, listUsers } from "../api/client";
 
 // Membership is many-to-many, so "which profile(s) does this user hold" isn't visible
 // from the Profiles list alone — this read-only overview joins the two client-side.
-export function UsersOverview() {
+interface UsersOverviewProps {
+  authToken?: string | null;
+}
+
+export function UsersOverview({ authToken }: UsersOverviewProps) {
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,14 +17,14 @@ export function UsersOverview() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([listUsers(), listProfiles({ includeArchived: "true" })])
+    Promise.all([listUsers(authToken), listProfiles({ includeArchived: "true" }, authToken)])
       .then(([u, p]) => {
         setUsers(u);
         setProfiles(p);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load users."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [authToken]);
 
   if (loading) {
     return (

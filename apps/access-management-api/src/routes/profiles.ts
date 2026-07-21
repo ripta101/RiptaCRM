@@ -4,13 +4,14 @@ import type { AddProfileMemberInput, CreateProfileInput, DashboardType, UpdatePr
 import { prisma } from "../db";
 import { toProfile } from "../lib/mappers";
 import { isRecordNotFoundError, isUniqueConstraintError } from "../lib/prismaErrors";
+import { requirePermission } from "../lib/requirePermission";
 
 export const profilesRouter = Router();
 
 const WITH_RELATIONS = { navItems: true, members: true } as const;
 const VALID_DASHBOARD_TYPES: DashboardType[] = ["frontline", "admin"];
 
-profilesRouter.get("/profiles", async (req, res) => {
+profilesRouter.get("/profiles", requirePermission("access-management-config"), async (req, res) => {
   const where: Record<string, unknown> = {};
   if (req.query.includeArchived !== "true") where.archivedAt = null;
   if (typeof req.query.userId === "string" && req.query.userId.trim()) {
@@ -21,7 +22,7 @@ profilesRouter.get("/profiles", async (req, res) => {
   res.json({ results: await Promise.all(profiles.map(toProfile)) });
 });
 
-profilesRouter.post("/profiles", async (req, res) => {
+profilesRouter.post("/profiles", requirePermission("access-management-config"), async (req, res) => {
   const body = req.body as Partial<CreateProfileInput>;
   if (!body.name?.trim()) {
     return res.status(400).json({ error: "name is required." });
@@ -48,13 +49,13 @@ profilesRouter.post("/profiles", async (req, res) => {
   }
 });
 
-profilesRouter.get("/profiles/:id", async (req, res) => {
+profilesRouter.get("/profiles/:id", requirePermission("access-management-config"), async (req, res) => {
   const profile = await prisma.profile.findUnique({ where: { id: req.params.id }, include: WITH_RELATIONS });
   if (!profile) return res.status(404).json({ error: "Profile not found." });
   res.json(await toProfile(profile));
 });
 
-profilesRouter.patch("/profiles/:id", async (req, res) => {
+profilesRouter.patch("/profiles/:id", requirePermission("access-management-config"), async (req, res) => {
   const existing = await prisma.profile.findUnique({ where: { id: req.params.id } });
   if (!existing) return res.status(404).json({ error: "Profile not found." });
 
@@ -103,7 +104,7 @@ profilesRouter.patch("/profiles/:id", async (req, res) => {
   }
 });
 
-profilesRouter.delete("/profiles/:id", async (req, res) => {
+profilesRouter.delete("/profiles/:id", requirePermission("access-management-config"), async (req, res) => {
   const existing = await prisma.profile.findUnique({ where: { id: req.params.id }, include: WITH_RELATIONS });
   if (!existing) return res.status(204).end(); // already gone — DELETE is idempotent
 
@@ -118,7 +119,7 @@ profilesRouter.delete("/profiles/:id", async (req, res) => {
   res.status(204).end();
 });
 
-profilesRouter.post("/profiles/:id/archive", async (req, res) => {
+profilesRouter.post("/profiles/:id/archive", requirePermission("access-management-config"), async (req, res) => {
   const existing = await prisma.profile.findUnique({ where: { id: req.params.id }, include: WITH_RELATIONS });
   if (!existing) return res.status(404).json({ error: "Profile not found." });
 
@@ -140,7 +141,7 @@ profilesRouter.post("/profiles/:id/archive", async (req, res) => {
   res.json(await toProfile(profile));
 });
 
-profilesRouter.post("/profiles/:id/members", async (req, res) => {
+profilesRouter.post("/profiles/:id/members", requirePermission("access-management-config"), async (req, res) => {
   const body = req.body as Partial<AddProfileMemberInput>;
   if (!body.userId?.trim()) {
     return res.status(400).json({ error: "userId is required." });
@@ -164,7 +165,7 @@ profilesRouter.post("/profiles/:id/members", async (req, res) => {
   res.status(201).json(await toProfile(updated));
 });
 
-profilesRouter.delete("/profiles/:id/members/:userId", async (req, res) => {
+profilesRouter.delete("/profiles/:id/members/:userId", requirePermission("access-management-config"), async (req, res) => {
   try {
     await prisma.profileUser.delete({
       where: { profileId_userId: { profileId: req.params.id, userId: req.params.userId } },

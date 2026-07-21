@@ -11,7 +11,7 @@ export function OpenCasesWidget() {
 
   useEffect(() => {
     if (!user) return;
-    listOpenCasesAssignedTo(user.id)
+    listOpenCasesAssignedTo(user.id, user.token)
       .then((cases) => {
         setCount(cases.length);
         const today = new Date().toDateString();

@@ -18,7 +18,11 @@ import type { ActionLogEntry } from "@riptacrm/shared-types";
 import { formatDateTime } from "@riptacrm/ui";
 import { listActionLog } from "../api/client";
 
-export function ActionLogViewer() {
+interface ActionLogViewerProps {
+  authToken?: string | null;
+}
+
+export function ActionLogViewer({ authToken }: ActionLogViewerProps) {
   const [entries, setEntries] = useState<ActionLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +31,16 @@ export function ActionLogViewer() {
 
   function load() {
     setLoading(true);
-    listActionLog({ caseInstanceId: caseInstanceId.trim() || undefined, caseTypeId: caseTypeId.trim() || undefined })
+    listActionLog(
+      { caseInstanceId: caseInstanceId.trim() || undefined, caseTypeId: caseTypeId.trim() || undefined },
+      authToken,
+    )
       .then(setEntries)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(load, [authToken]);
 
   return (
     <Box>

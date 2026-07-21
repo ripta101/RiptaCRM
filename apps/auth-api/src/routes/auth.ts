@@ -13,6 +13,7 @@ import { signAuthToken, signPreAuthToken, verifyPreAuthToken } from "../lib/jwt"
 export const authRouter = Router();
 
 const ACCESS_MANAGEMENT_API_URL = process.env.ACCESS_MANAGEMENT_API_URL ?? "http://localhost:4314";
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "dev-only-insecure-service-key-change-me";
 
 // A valid bcrypt hash of a value nobody will ever type as a password. Comparing against
 // this when the username isn't found means an unknown-username request takes roughly the
@@ -26,7 +27,9 @@ const DUMMY_HASH = "$2a$10$CwTycUXWue0Thq9StjUM0uJ8y6ONf7A1YWyCZBOF/lHmqp6ecC9wS
 // lockout). Failing loud — no token, a clear 503 — is the one deliberate exception to the
 // "reads fail soft" convention documented in docs/architecture.md.
 async function fetchProfilesForUser(userId: string): Promise<Profile[]> {
-  const upstream = await fetch(`${ACCESS_MANAGEMENT_API_URL}/api/profiles?userId=${encodeURIComponent(userId)}`);
+  const upstream = await fetch(`${ACCESS_MANAGEMENT_API_URL}/api/profiles?userId=${encodeURIComponent(userId)}`, {
+    headers: { "X-Internal-Service-Key": INTERNAL_SERVICE_KEY },
+  });
   if (!upstream.ok) {
     throw new Error(`access-management-api returned ${upstream.status}`);
   }

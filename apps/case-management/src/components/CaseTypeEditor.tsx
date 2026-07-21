@@ -37,9 +37,10 @@ type EditorTab = "details" | "fields" | "stages" | "actions" | "instances";
 interface CaseTypeEditorProps {
   caseTypeId: string;
   onBack: () => void;
+  authToken?: string | null;
 }
 
-export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
+export function CaseTypeEditor({ caseTypeId, onBack, authToken }: CaseTypeEditorProps) {
   const [caseType, setCaseType] = useState<CaseTypeSummary | null>(null);
   const [versionHistory, setVersionHistory] = useState<CaseTypeVersionSummary[]>([]);
   const [versionDetail, setVersionDetail] = useState<CaseTypeVersionDetail | null>(null);
@@ -54,20 +55,20 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
     setError(null);
     try {
       const [ct, versions] = await Promise.all([
-        getCaseType(caseTypeId),
-        listCaseTypeVersions(caseTypeId),
+        getCaseType(caseTypeId, authToken),
+        listCaseTypeVersions(caseTypeId, authToken),
       ]);
       setCaseType(ct);
       setVersionHistory(versions);
 
       const displayVersionId = ct.draftVersion?.id ?? ct.publishedVersion?.id ?? null;
-      setVersionDetail(displayVersionId ? await getCaseTypeVersion(displayVersionId) : null);
+      setVersionDetail(displayVersionId ? await getCaseTypeVersion(displayVersionId, authToken) : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load case type.");
     } finally {
       setLoading(false);
     }
-  }, [caseTypeId]);
+  }, [caseTypeId, authToken]);
 
   useEffect(() => {
     load();
@@ -76,7 +77,7 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
   async function handleCreateDraft() {
     setActionError(null);
     try {
-      await createDraftVersion(caseTypeId);
+      await createDraftVersion(caseTypeId, authToken);
       await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to create draft.");
@@ -87,7 +88,7 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
     if (!versionDetail) return;
     setActionError(null);
     try {
-      await publishVersion(versionDetail.id);
+      await publishVersion(versionDetail.id, authToken);
       await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to publish.");
@@ -99,7 +100,7 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
     setActionError(null);
     setDeleteDraftDialogOpen(false);
     try {
-      await deleteCaseTypeVersion(versionDetail.id);
+      await deleteCaseTypeVersion(versionDetail.id, authToken);
       await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to delete draft.");
@@ -212,6 +213,7 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
           fields={versionDetail.fields}
           editable={isEditable}
           onChanged={load}
+          authToken={authToken}
         />
       )}
 
@@ -222,22 +224,33 @@ export function CaseTypeEditor({ caseTypeId, onBack }: CaseTypeEditorProps) {
             editable={isEditable}
             onChanged={load}
             onPositionChanged={handleStagePositionChanged}
+            authToken={authToken}
           />
           <StageListEditor
             versionId={versionDetail.id}
             stages={versionDetail.stages}
             editable={isEditable}
             onChanged={load}
+            authToken={authToken}
           />
         </Stack>
       )}
 
       {tab === "actions" && versionDetail && (
-        <ActionListEditor stages={versionDetail.stages} editable={isEditable} onChanged={load} />
+        <ActionListEditor
+          stages={versionDetail.stages}
+          editable={isEditable}
+          onChanged={load}
+          authToken={authToken}
+        />
       )}
 
       {tab === "instances" && (
-        <CaseInstancesPanel caseTypeId={caseTypeId} publishedVersion={caseType.publishedVersion} />
+        <CaseInstancesPanel
+          caseTypeId={caseTypeId}
+          publishedVersion={caseType.publishedVersion}
+          authToken={authToken}
+        />
       )}
 
       <Dialog open={deleteDraftDialogOpen} onClose={() => setDeleteDraftDialogOpen(false)}>

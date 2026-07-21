@@ -61,9 +61,16 @@ interface StageFlowEditorProps {
   editable: boolean;
   onChanged: () => void;
   onPositionChanged: (stageId: string, positionX: number, positionY: number) => void;
+  authToken?: string | null;
 }
 
-export function StageFlowEditor({ stages, editable, onChanged, onPositionChanged }: StageFlowEditorProps) {
+export function StageFlowEditor({
+  stages,
+  editable,
+  onChanged,
+  onPositionChanged,
+  authToken,
+}: StageFlowEditorProps) {
   const [error, setError] = useState<string | null>(null);
   // React Flow needs to own node/edge selection, dragging-in-progress, etc. via its normal
   // onNodesChange/onEdgesChange delta API — passing `stages`-derived nodes/edges straight
@@ -96,7 +103,7 @@ export function StageFlowEditor({ stages, editable, onChanged, onPositionChanged
     const positionX = Math.round(node.position.x);
     const positionY = Math.round(node.position.y);
     try {
-      await updateStage(node.id, { positionX, positionY });
+      await updateStage(node.id, { positionX, positionY }, authToken);
       onPositionChanged(node.id, positionX, positionY);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save stage position.");
@@ -106,7 +113,7 @@ export function StageFlowEditor({ stages, editable, onChanged, onPositionChanged
   async function handleConnect(connection: Connection) {
     if (!connection.source || !connection.target) return;
     try {
-      await createStageTransition(connection.source, { toStageId: connection.target });
+      await createStageTransition(connection.source, { toStageId: connection.target }, authToken);
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create transition.");
@@ -115,7 +122,7 @@ export function StageFlowEditor({ stages, editable, onChanged, onPositionChanged
 
   async function handleEdgesDelete(deleted: Edge[]) {
     try {
-      await Promise.all(deleted.map((e) => deleteStageTransition(e.id)));
+      await Promise.all(deleted.map((e) => deleteStageTransition(e.id, authToken)));
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete transition.");
@@ -125,7 +132,7 @@ export function StageFlowEditor({ stages, editable, onChanged, onPositionChanged
 
   async function handleNodesDelete(deleted: Node[]) {
     try {
-      await Promise.all(deleted.map((n) => deleteStage(n.id)));
+      await Promise.all(deleted.map((n) => deleteStage(n.id, authToken)));
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete stage.");

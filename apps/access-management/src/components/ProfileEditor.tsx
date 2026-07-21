@@ -37,9 +37,10 @@ import {
 interface ProfileEditorProps {
   profileId: string;
   onBack: () => void;
+  authToken?: string | null;
 }
 
-export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
+export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [customMenuItems, setCustomMenuItems] = useState<CustomMenuItem[]>([]);
@@ -59,7 +60,7 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
 
   function load() {
     setLoading(true);
-    Promise.all([getProfile(profileId), listUsers(), listMenuItems()])
+    Promise.all([getProfile(profileId, authToken), listUsers(authToken), listMenuItems(authToken)])
       .then(([p, u, m]) => {
         setProfile(p);
         setUsers(u);
@@ -72,13 +73,17 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [profileId]);
+  useEffect(load, [profileId, authToken]);
 
   async function handleSaveDetails() {
     setSaving(true);
     setDetailsError(null);
     try {
-      const updated = await updateProfile(profileId, { name: name.trim(), dashboardType, canStartInteractions });
+      const updated = await updateProfile(
+        profileId,
+        { name: name.trim(), dashboardType, canStartInteractions },
+        authToken,
+      );
       setProfile(updated);
     } catch (err) {
       setDetailsError(err instanceof Error ? err.message : "Failed to save profile.");
@@ -94,7 +99,7 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
       ? profile.navItemIds.filter((id) => id !== navItemId)
       : [...profile.navItemIds, navItemId];
     try {
-      const updated = await updateProfile(profileId, { navItemIds });
+      const updated = await updateProfile(profileId, { navItemIds }, authToken);
       setProfile(updated);
     } catch (err) {
       setNavItemError(err instanceof Error ? err.message : "Failed to update menu items.");
@@ -105,7 +110,7 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
     if (!memberToAdd) return;
     setMemberError(null);
     try {
-      const updated = await addProfileMember(profileId, { userId: memberToAdd });
+      const updated = await addProfileMember(profileId, { userId: memberToAdd }, authToken);
       setProfile(updated);
       setMemberToAdd("");
     } catch (err) {
@@ -116,7 +121,7 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
   async function handleRemoveMember(userId: string) {
     setMemberError(null);
     try {
-      await removeProfileMember(profileId, userId);
+      await removeProfileMember(profileId, userId, authToken);
       setProfile((prev) => (prev ? { ...prev, memberUserIds: prev.memberUserIds.filter((id) => id !== userId) } : prev));
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to remove member.");
@@ -126,7 +131,7 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
   async function handleArchive() {
     setLifecycleError(null);
     try {
-      const updated = await archiveProfile(profileId);
+      const updated = await archiveProfile(profileId, authToken);
       setProfile(updated);
     } catch (err) {
       setLifecycleError(err instanceof Error ? err.message : "Failed to archive profile.");
@@ -136,7 +141,7 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
   async function handleDelete() {
     setLifecycleError(null);
     try {
-      await deleteProfile(profileId);
+      await deleteProfile(profileId, authToken);
       onBack();
     } catch (err) {
       setLifecycleError(err instanceof Error ? err.message : "Failed to delete profile.");
@@ -226,13 +231,31 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
         </Alert>
       )}
       <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-        {ALL_NAV_ITEMS.map((item) => (
+        {ALL_NAV_ITEMS.filter((item) => item.path).map((item) => (
           <FormControlLabel
             key={item.id}
             control={
               <Checkbox
                 checked={profile.navItemIds.includes(item.id)}
                 disabled={profile.isProtected && item.id === PROTECTED_PROFILE_REQUIRED_NAV_ITEM_ID}
+                onChange={() => handleToggleNavItem(item.id)}
+              />
+            }
+            label={item.label}
+          />
+        ))}
+      </Paper>
+
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Customer Interaction Features
+      </Typography>
+      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+        {ALL_NAV_ITEMS.filter((item) => !item.path).map((item) => (
+          <FormControlLabel
+            key={item.id}
+            control={
+              <Checkbox
+                checked={profile.navItemIds.includes(item.id)}
                 onChange={() => handleToggleNavItem(item.id)}
               />
             }
