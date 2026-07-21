@@ -2,6 +2,7 @@ export * from "./interaction";
 export * from "./nav";
 export * from "./navRegistry";
 export * from "./user";
+export * from "./menuItem";
 export * from "./profile";
 export * from "./customer";
 export * from "./case";

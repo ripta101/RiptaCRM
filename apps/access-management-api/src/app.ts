@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { profilesRouter } from "./routes/profiles";
+import { menuItemsRouter } from "./routes/menuItems";
 import { usersRouter } from "./routes/users";
 
 export function createApp() {
@@ -19,6 +20,7 @@ export function createApp() {
   });
 
   app.use("/api", profilesRouter);
+  app.use("/api", menuItemsRouter);
   app.use("/api", usersRouter);
 
   app.use((_req, res) => {

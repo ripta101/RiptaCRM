@@ -22,12 +22,13 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { ALL_NAV_ITEMS, PROTECTED_PROFILE_REQUIRED_NAV_ITEM_ID } from "@riptacrm/shared-types";
-import type { DashboardType, Profile, UserSummary } from "@riptacrm/shared-types";
+import type { CustomMenuItem, DashboardType, Profile, UserSummary } from "@riptacrm/shared-types";
 import {
   addProfileMember,
   archiveProfile,
   deleteProfile,
   getProfile,
+  listMenuItems,
   listUsers,
   removeProfileMember,
   updateProfile,
@@ -41,6 +42,7 @@ interface ProfileEditorProps {
 export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [users, setUsers] = useState<UserSummary[]>([]);
+  const [customMenuItems, setCustomMenuItems] = useState<CustomMenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,10 +59,11 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
 
   function load() {
     setLoading(true);
-    Promise.all([getProfile(profileId), listUsers()])
-      .then(([p, u]) => {
+    Promise.all([getProfile(profileId), listUsers(), listMenuItems()])
+      .then(([p, u, m]) => {
         setProfile(p);
         setUsers(u);
+        setCustomMenuItems(m);
         setName(p.name);
         setDashboardType(p.dashboardType);
         setCanStartInteractions(p.canStartInteractions);
@@ -237,6 +240,28 @@ export function ProfileEditor({ profileId, onBack }: ProfileEditorProps) {
           />
         ))}
       </Paper>
+
+      {customMenuItems.length > 0 && (
+        <>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Custom Menu Items
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+            {customMenuItems.map((item) => (
+              <FormControlLabel
+                key={item.id}
+                control={
+                  <Checkbox
+                    checked={profile.navItemIds.includes(item.id)}
+                    onChange={() => handleToggleNavItem(item.id)}
+                  />
+                }
+                label={item.label}
+              />
+            ))}
+          </Paper>
+        </>
+      )}
 
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
         Members

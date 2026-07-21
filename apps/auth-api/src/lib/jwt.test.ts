@@ -6,6 +6,17 @@ const SECRET = process.env.JWT_SECRET ?? "dev-only-insecure-secret-change-me";
 
 describe("jwt", () => {
   it("round-trips a signed token through verification", () => {
+    const customMenuItem = {
+      id: "menu-item-1",
+      label: "Support Portal",
+      displayType: "IFRAME" as const,
+      iframeUrl: "https://example.com",
+      remoteEntryUrl: null,
+      remoteName: null,
+      exposedModule: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
     const token = signAuthToken({
       sub: "user-1",
       name: "Test User",
@@ -15,6 +26,7 @@ describe("jwt", () => {
       dashboardType: "frontline",
       canStartInteractions: true,
       navItemIds: ["home", "it-support"],
+      customMenuItems: [customMenuItem],
     });
 
     const verified = verifyAuthToken(token);
@@ -26,6 +38,7 @@ describe("jwt", () => {
     expect(verified.dashboardType).toBe("frontline");
     expect(verified.canStartInteractions).toBe(true);
     expect(verified.navItemIds).toEqual(["home", "it-support"]);
+    expect(verified.customMenuItems).toEqual([customMenuItem]);
     expect(typeof verified.exp).toBe("number");
   });
 

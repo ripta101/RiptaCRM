@@ -22,6 +22,7 @@ const FRONTLINE_PROFILE = {
   dashboardType: "frontline",
   canStartInteractions: true,
   navItemIds: ["home", "it-support"],
+  customMenuItems: [],
   memberUserIds: [],
   archivedAt: null,
   createdAt: new Date().toISOString(),
@@ -116,6 +117,7 @@ describe("POST /api/auth/login", () => {
       dashboardType: "frontline",
       canStartInteractions: true,
       navItemIds: ["home", "it-support"],
+      customMenuItems: [],
     });
     expect(typeof res.body.token).toBe("string");
 

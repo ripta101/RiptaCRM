@@ -1,7 +1,10 @@
 import type {
   AddProfileMemberInput,
+  CreateMenuItemInput,
   CreateProfileInput,
+  CustomMenuItem,
   Profile,
+  UpdateMenuItemInput,
   UpdateProfileInput,
   UserSummary,
 } from "@riptacrm/shared-types";
@@ -43,3 +46,13 @@ export const removeProfileMember = (profileId: string, userId: string) =>
 
 // Users (for the member picker)
 export const listUsers = () => request<{ results: UserSummary[] }>("/api/users").then((r) => r.results);
+
+// Menu items
+export const listMenuItems = () =>
+  request<{ results: CustomMenuItem[] }>("/api/menu-items").then((r) => r.results);
+export const getMenuItem = (id: string) => request<CustomMenuItem>(`/api/menu-items/${id}`);
+export const createMenuItem = (input: CreateMenuItemInput) =>
+  request<CustomMenuItem>("/api/menu-items", { method: "POST", body: JSON.stringify(input) });
+export const updateMenuItem = (id: string, input: UpdateMenuItemInput) =>
+  request<CustomMenuItem>(`/api/menu-items/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+export const deleteMenuItem = (id: string) => request<void>(`/api/menu-items/${id}`, { method: "DELETE" });

@@ -47,3 +47,34 @@ export async function addProfileMember(profileId: string, userId: string): Promi
 export async function removeProfileMember(profileId: string, userId: string): Promise<void> {
   await request(`/api/profiles/${profileId}/members/${userId}`, { method: "DELETE" });
 }
+
+export async function setProfileNavItemIds(profileId: string, navItemIds: string[]): Promise<void> {
+  await request(`/api/profiles/${profileId}`, { method: "PATCH", body: JSON.stringify({ navItemIds }) });
+}
+
+export interface ThrowawayMenuItem {
+  id: string;
+}
+
+export async function createIframeMenuItem(label: string, iframeUrl: string): Promise<ThrowawayMenuItem> {
+  return request<ThrowawayMenuItem>("/api/menu-items", {
+    method: "POST",
+    body: JSON.stringify({ label, displayType: "IFRAME", iframeUrl }),
+  });
+}
+
+export async function createMfeMenuItem(
+  label: string,
+  remoteEntryUrl: string,
+  remoteName: string,
+  exposedModule: string,
+): Promise<ThrowawayMenuItem> {
+  return request<ThrowawayMenuItem>("/api/menu-items", {
+    method: "POST",
+    body: JSON.stringify({ label, displayType: "MFE", remoteEntryUrl, remoteName, exposedModule }),
+  });
+}
+
+export async function deleteMenuItem(menuItemId: string): Promise<void> {
+  await request(`/api/menu-items/${menuItemId}`, { method: "DELETE" });
+}

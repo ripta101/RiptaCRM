@@ -18,7 +18,7 @@ profilesRouter.get("/profiles", async (req, res) => {
   }
 
   const profiles = await prisma.profile.findMany({ where, include: WITH_RELATIONS, orderBy: { name: "asc" } });
-  res.json({ results: profiles.map(toProfile) });
+  res.json({ results: await Promise.all(profiles.map(toProfile)) });
 });
 
 profilesRouter.post("/profiles", async (req, res) => {
@@ -39,7 +39,7 @@ profilesRouter.post("/profiles", async (req, res) => {
       },
       include: WITH_RELATIONS,
     });
-    res.status(201).json(toProfile(profile));
+    res.status(201).json(await toProfile(profile));
   } catch (err) {
     if (isUniqueConstraintError(err)) {
       return res.status(409).json({ error: `A profile named "${body.name}" already exists.` });
@@ -51,7 +51,7 @@ profilesRouter.post("/profiles", async (req, res) => {
 profilesRouter.get("/profiles/:id", async (req, res) => {
   const profile = await prisma.profile.findUnique({ where: { id: req.params.id }, include: WITH_RELATIONS });
   if (!profile) return res.status(404).json({ error: "Profile not found." });
-  res.json(toProfile(profile));
+  res.json(await toProfile(profile));
 });
 
 profilesRouter.patch("/profiles/:id", async (req, res) => {
@@ -94,7 +94,7 @@ profilesRouter.patch("/profiles/:id", async (req, res) => {
         include: WITH_RELATIONS,
       });
     });
-    res.json(toProfile(profile));
+    res.json(await toProfile(profile));
   } catch (err) {
     if (isUniqueConstraintError(err)) {
       return res.status(409).json({ error: `A profile named "${body.name}" already exists.` });
@@ -123,7 +123,7 @@ profilesRouter.post("/profiles/:id/archive", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Profile not found." });
 
   if (existing.archivedAt) {
-    return res.json(toProfile(existing));
+    return res.json(await toProfile(existing));
   }
   if (existing.isProtected) {
     return res.status(400).json({ error: "This profile is protected and cannot be archived." });
@@ -137,7 +137,7 @@ profilesRouter.post("/profiles/:id/archive", async (req, res) => {
     data: { archivedAt: new Date() },
     include: WITH_RELATIONS,
   });
-  res.json(toProfile(profile));
+  res.json(await toProfile(profile));
 });
 
 profilesRouter.post("/profiles/:id/members", async (req, res) => {
@@ -161,7 +161,7 @@ profilesRouter.post("/profiles/:id/members", async (req, res) => {
   }
 
   const updated = await prisma.profile.findUniqueOrThrow({ where: { id: profile.id }, include: WITH_RELATIONS });
-  res.status(201).json(toProfile(updated));
+  res.status(201).json(await toProfile(updated));
 });
 
 profilesRouter.delete("/profiles/:id/members/:userId", async (req, res) => {

@@ -21,6 +21,7 @@ const FRONTLINE_USER = {
   dashboardType: "frontline",
   canStartInteractions: true,
   navItemIds: ["home", "it-support"],
+  customMenuItems: [],
 };
 
 describe("apiAuthProvider", () => {
@@ -149,6 +150,7 @@ describe("apiAuthProvider", () => {
         dashboardType: "admin",
         canStartInteractions: false,
         navItemIds: ["home", "case-management-config"],
+        customMenuItems: [],
         exp: Math.floor(Date.now() / 1000) + 3600,
       });
       sessionStorage.setItem("riptacrm.auth.token", token);
@@ -163,6 +165,7 @@ describe("apiAuthProvider", () => {
         dashboardType: "admin",
         canStartInteractions: false,
         navItemIds: ["home", "case-management-config"],
+        customMenuItems: [],
         token,
       });
     });

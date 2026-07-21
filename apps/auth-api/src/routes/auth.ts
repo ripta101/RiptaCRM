@@ -44,6 +44,7 @@ function buildLoginResponse(user: { id: string; name: string; email: string }, p
     dashboardType: profile.dashboardType,
     canStartInteractions: profile.canStartInteractions,
     navItemIds: profile.navItemIds,
+    customMenuItems: profile.customMenuItems,
   });
   return {
     token,
@@ -56,6 +57,7 @@ function buildLoginResponse(user: { id: string; name: string; email: string }, p
       dashboardType: profile.dashboardType,
       canStartInteractions: profile.canStartInteractions,
       navItemIds: profile.navItemIds,
+      customMenuItems: profile.customMenuItems,
     },
   };
 }

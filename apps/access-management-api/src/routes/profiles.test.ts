@@ -172,6 +172,47 @@ describe("Profile membership", () => {
   });
 });
 
+describe("Custom menu items in Profile response", () => {
+  const createdMenuItemIds: string[] = [];
+
+  afterEach(async () => {
+    await prisma.menuItem.deleteMany({ where: { id: { in: createdMenuItemIds.splice(0) } } });
+  });
+
+  it("resolves a granted custom menu item id into a full object", async () => {
+    const menuItem = await prisma.menuItem.create({
+      data: { label: `Custom ${randomUUID()}`, displayType: "IFRAME", iframeUrl: "https://example.com" },
+    });
+    createdMenuItemIds.push(menuItem.id);
+
+    const profile = await createProfile();
+    const updated = await request(app)
+      .patch(`/api/profiles/${profile.body.id}`)
+      .send({ navItemIds: ["home", menuItem.id] });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body.navItemIds.sort()).toEqual([menuItem.id, "home"].sort());
+    expect(updated.body.customMenuItems).toEqual([
+      expect.objectContaining({ id: menuItem.id, label: menuItem.label, displayType: "IFRAME" }),
+    ]);
+  });
+
+  it("omits a granted id gracefully once the underlying menu item has been deleted", async () => {
+    const menuItem = await prisma.menuItem.create({
+      data: { label: `Custom ${randomUUID()}`, displayType: "IFRAME", iframeUrl: "https://example.com" },
+    });
+
+    const profile = await createProfile();
+    await request(app).patch(`/api/profiles/${profile.body.id}`).send({ navItemIds: [menuItem.id] });
+    await prisma.menuItem.delete({ where: { id: menuItem.id } });
+
+    const res = await request(app).get(`/api/profiles/${profile.body.id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.navItemIds).toEqual([menuItem.id]); // still granted — just no longer resolvable
+    expect(res.body.customMenuItems).toEqual([]);
+  });
+});
+
 describe("GET /users proxy", () => {
   it("fails soft to an empty list when auth-api is unreachable", async () => {
     // AUTH_API_URL in .env.test points at the real auth-api port; if it's not running in

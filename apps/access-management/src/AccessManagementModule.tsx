@@ -3,12 +3,15 @@ import { Box, Tab, Tabs } from "@mui/material";
 import { ProfileList } from "./components/ProfileList";
 import { ProfileEditor } from "./components/ProfileEditor";
 import { UsersOverview } from "./components/UsersOverview";
+import { MenuItemList } from "./components/MenuItemList";
+import { MenuItemEditor } from "./components/MenuItemEditor";
 
-type TopTab = "profiles" | "users";
+type TopTab = "profiles" | "users" | "menuItems";
 
 export default function AccessManagementModule() {
   const [tab, setTab] = useState<TopTab>("profiles");
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [selectedMenuItemId, setSelectedMenuItemId] = useState<string | null>(null);
 
   return (
     <Box>
@@ -17,11 +20,13 @@ export default function AccessManagementModule() {
         onChange={(_e, value: TopTab) => {
           setTab(value);
           setSelectedProfileId(null);
+          setSelectedMenuItemId(null);
         }}
         sx={{ mb: 3 }}
       >
         <Tab label="Profiles" value="profiles" />
         <Tab label="Users" value="users" />
+        <Tab label="Menu Items" value="menuItems" />
       </Tabs>
 
       {tab === "profiles" &&
@@ -32,6 +37,13 @@ export default function AccessManagementModule() {
         ))}
 
       {tab === "users" && <UsersOverview />}
+
+      {tab === "menuItems" &&
+        (selectedMenuItemId ? (
+          <MenuItemEditor menuItemId={selectedMenuItemId} onBack={() => setSelectedMenuItemId(null)} />
+        ) : (
+          <MenuItemList onSelect={setSelectedMenuItemId} />
+        ))}
     </Box>
   );
 }

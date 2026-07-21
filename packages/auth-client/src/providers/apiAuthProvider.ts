@@ -1,5 +1,5 @@
 import { jwtDecode } from "jwt-decode";
-import type { DashboardType } from "@riptacrm/shared-types";
+import type { CustomMenuItem, DashboardType } from "@riptacrm/shared-types";
 import type { AuthProvider, AuthSession, LoginResult, ProfileChoice } from "../types";
 
 const STORAGE_KEY = "riptacrm.auth.token";
@@ -17,6 +17,7 @@ interface AuthTokenClaims {
   dashboardType: DashboardType;
   canStartInteractions: boolean;
   navItemIds: string[];
+  customMenuItems: CustomMenuItem[];
   exp: number;
   iat: number;
 }
@@ -43,6 +44,7 @@ function sessionFromToken(token: string): AuthSession | null {
     dashboardType: claims.dashboardType,
     canStartInteractions: claims.canStartInteractions,
     navItemIds: claims.navItemIds,
+    customMenuItems: claims.customMenuItems,
     token,
   };
 }
@@ -56,6 +58,7 @@ interface AuthEndpointUser {
   dashboardType: DashboardType;
   canStartInteractions: boolean;
   navItemIds: string[];
+  customMenuItems: CustomMenuItem[];
 }
 
 interface AuthEndpointBody {
@@ -77,6 +80,7 @@ function sessionFromUser(user: AuthEndpointUser, token: string): AuthSession {
     dashboardType: user.dashboardType,
     canStartInteractions: user.canStartInteractions,
     navItemIds: user.navItemIds,
+    customMenuItems: user.customMenuItems,
     token,
   };
 }

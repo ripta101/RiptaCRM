@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import type { DashboardType } from "@riptacrm/shared-types";
+import type { CustomMenuItem, DashboardType } from "@riptacrm/shared-types";
 
 // Known simplification: a single static secret from env, with an insecure dev-only
 // fallback, no rotation, no per-environment secret management. Acceptable for this
@@ -17,6 +17,7 @@ export interface AuthTokenPayload {
   dashboardType: DashboardType;
   canStartInteractions: boolean;
   navItemIds: string[];
+  customMenuItems: CustomMenuItem[];
 }
 
 export interface VerifiedAuthTokenPayload extends AuthTokenPayload {

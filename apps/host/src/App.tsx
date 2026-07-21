@@ -10,6 +10,7 @@ import { EmailConfigPage } from "./pages/EmailConfigPage";
 import { CaseManagementConfigPage } from "./pages/CaseManagementConfigPage";
 import { MessageBroadcastConfigPage } from "./pages/MessageBroadcastConfigPage";
 import { AccessManagementConfigPage } from "./pages/AccessManagementConfigPage";
+import { CustomMenuItemPage } from "./pages/CustomMenuItemPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 
@@ -40,6 +41,7 @@ export function App() {
           <Route element={<NavItemRoute navItemId="access-management-config" />}>
             <Route path="/config/access-management" element={<AccessManagementConfigPage />} />
           </Route>
+          <Route path="/custom/:menuItemId" element={<CustomMenuItemPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

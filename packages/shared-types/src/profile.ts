@@ -1,3 +1,5 @@
+import type { CustomMenuItem } from "./menuItem";
+
 export type DashboardType = "frontline" | "admin";
 
 export interface Profile {
@@ -7,6 +9,10 @@ export interface Profile {
   dashboardType: DashboardType;
   canStartInteractions: boolean;
   navItemIds: string[];
+  // Resolved subset of navItemIds that reference custom MenuItems (not the built-in
+  // compile-time registry) — full objects, since the caller has no other way to know
+  // their label/type/url. See access-management-api's toProfile() mapper.
+  customMenuItems: CustomMenuItem[];
   memberUserIds: string[];
   archivedAt: string | null;
   createdAt: string;
@@ -41,6 +47,7 @@ export interface AuthenticatedUser {
   dashboardType: DashboardType;
   canStartInteractions: boolean;
   navItemIds: string[];
+  customMenuItems: CustomMenuItem[];
 }
 
 export interface LoginResponse {

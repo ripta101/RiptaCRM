@@ -1,6 +1,6 @@
-import type { DashboardType } from "@riptacrm/shared-types";
+import type { CustomMenuItem, DashboardType } from "@riptacrm/shared-types";
 
-export type { DashboardType };
+export type { CustomMenuItem, DashboardType };
 
 export interface AuthSession {
   id: string;
@@ -12,6 +12,7 @@ export interface AuthSession {
   dashboardType: DashboardType;
   canStartInteractions: boolean;
   navItemIds: string[];
+  customMenuItems: CustomMenuItem[];
   token: string;
 }
 

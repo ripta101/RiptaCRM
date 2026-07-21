@@ -41,3 +41,15 @@ model ProfileUser {
 
   @@unique([profileId, userId])
 }
+
+model MenuItem {
+  id             String   @id @default(uuid())
+  label          String
+  displayType    String // "IFRAME" | "MFE"
+  iframeUrl      String?
+  remoteEntryUrl String?
+  remoteName     String?
+  exposedModule  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
