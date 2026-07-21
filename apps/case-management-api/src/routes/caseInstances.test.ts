@@ -211,3 +211,100 @@ describe("POST /api/case-instances — queue routing", () => {
     expect(res.body.assignedQueueId).toBeNull();
   });
 });
+
+describe("Queue allocation", () => {
+  let caseTypeId: string;
+  let stageId: string;
+  let queueAId: string;
+  let queueBId: string;
+
+  beforeEach(async () => {
+    const caseType = await prisma.caseType.create({
+      data: {
+        key: `test-queue-allocation-${randomUUID()}`,
+        name: "Test Queue Allocation Case Type",
+        versions: {
+          create: {
+            versionNumber: 1,
+            status: "PUBLISHED",
+            publishedAt: new Date(),
+            stages: { create: [{ key: "start", name: "Start", slaMinutes: 60, displayOrder: 0 }] },
+          },
+        },
+      },
+      include: { versions: { include: { stages: true } } },
+    });
+    caseTypeId = caseType.id;
+    stageId = caseType.versions[0].stages[0].id;
+
+    const queueA = await prisma.queue.create({ data: { name: `Queue A ${randomUUID()}` } });
+    queueAId = queueA.id;
+    const queueB = await prisma.queue.create({ data: { name: `Queue B ${randomUUID()}` } });
+    queueBId = queueB.id;
+
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId: queueAId } });
+  });
+
+  afterEach(async () => {
+    await prisma.caseInstance.deleteMany({ where: { caseTypeId } });
+    await prisma.caseType.delete({ where: { id: caseTypeId } });
+    await prisma.queue.delete({ where: { id: queueAId } }).catch(() => undefined);
+    await prisma.queue.delete({ where: { id: queueBId } }).catch(() => undefined);
+  });
+
+  it("GET /case-instances?assignedQueueId=&unassigned=true returns only that queue's unassigned cases", async () => {
+    const routedToA = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
+    const assignedDirectly = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, assignedToUserId: "user-x" });
+
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId: queueBId } });
+    const routedToB = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-not-a-member-2" });
+    await prisma.stageDefinition.update({ where: { id: stageId }, data: { queueId: queueAId } });
+
+    const res = await request(app).get(`/api/case-instances?assignedQueueId=${queueAId}&unassigned=true`);
+
+    expect(res.status).toBe(200);
+    const ids = res.body.results.map((c: { id: string }) => c.id);
+    expect(ids).toContain(routedToA.body.id);
+    expect(ids).not.toContain(assignedDirectly.body.id);
+    expect(ids).not.toContain(routedToB.body.id);
+  });
+
+  it("PATCH /case-instances/:id/assignment sets assignedToUserId", async () => {
+    const created = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
+
+    const res = await request(app)
+      .patch(`/api/case-instances/${created.body.id}/assignment`)
+      .send({ assignedToUserId: "user-picked" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.assignedToUserId).toBe("user-picked");
+  });
+
+  it("rejects a blank assignedToUserId with 400", async () => {
+    const created = await request(app)
+      .post("/api/case-instances")
+      .send({ caseTypeId, lodgedByUserId: "user-not-a-member" });
+
+    const res = await request(app)
+      .patch(`/api/case-instances/${created.body.id}/assignment`)
+      .send({ assignedToUserId: "" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("404s when assigning a case instance that doesn't exist", async () => {
+    const res = await request(app)
+      .patch("/api/case-instances/does-not-exist/assignment")
+      .send({ assignedToUserId: "user-picked" });
+
+    expect(res.status).toBe(404);
+  });
+});

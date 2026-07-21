@@ -29,4 +29,22 @@ test.describe("Cross-module Open Cases", () => {
     const count = Number((await widget.locator("h3").textContent())?.trim());
     expect(count).toBeGreaterThanOrEqual(1);
   });
+
+  test("frontline Dashboard's Worklist tab lists the seeded assigned case, and the old standalone nav item is gone", async ({
+    page,
+  }) => {
+    await loginAsFrontline(page);
+
+    // The standalone "Worklist" menu item was removed in favor of the Dashboard tab below.
+    // Scoped to the drawer itself — the Dashboard page underneath already has a "Worklist" tab.
+    await page.getByRole("button", { name: "open menu" }).click();
+    const drawer = page.locator(".MuiDrawer-paper");
+    await expect(drawer.getByText("Worklist", { exact: true })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+
+    await page.getByRole("tab", { name: "Worklist" }).click();
+    const row = page.getByRole("row", { name: /Complaint/ });
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByText("Investigating")).toBeVisible();
+  });
 });

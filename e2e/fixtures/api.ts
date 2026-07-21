@@ -137,6 +137,16 @@ export async function createCaseInstance(caseTypeId: string): Promise<CaseInstan
   });
 }
 
+export async function listCaseInstancesForCaseType(
+  caseTypeId: string,
+): Promise<{ id: string; assignedToUserId: string | null }[]> {
+  const qs = new URLSearchParams({ caseTypeId });
+  const { results } = await request<{ results: { id: string; assignedToUserId: string | null }[] }>(
+    `/api/case-instances?${qs.toString()}`,
+  );
+  return results;
+}
+
 export async function deleteCaseInstance(instanceId: string): Promise<void> {
   await request(`/api/case-instances/${instanceId}`, { method: "DELETE" });
 }

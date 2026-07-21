@@ -22,6 +22,13 @@ export async function openCaseManagement(page: Page) {
   await page.waitForSelector('text="Case Types"', { timeout: 15_000 });
 }
 
+export async function openQueue(page: Page, queueName: string) {
+  await openCaseManagement(page);
+  await page.getByRole("tab", { name: "Queues" }).click();
+  await page.getByText(queueName, { exact: true }).click();
+  await page.waitForSelector('text="Unassigned Cases in This Queue"', { timeout: 10_000 });
+}
+
 export async function openMessageBroadcast(page: Page) {
   await page.getByRole("button", { name: "open menu" }).click();
   await page.getByText("Broadcasts", { exact: true }).click();

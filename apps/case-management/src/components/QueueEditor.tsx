@@ -17,8 +17,17 @@ import {
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import type { Queue, UserSummary } from "@riptacrm/shared-types";
-import { addQueueMember, getQueue, listUsers, removeQueueMember, updateQueue } from "../api/client";
+import type { CaseInstanceSummary, Queue, UserSummary } from "@riptacrm/shared-types";
+import { formatDateTime } from "@riptacrm/ui";
+import {
+  addQueueMember,
+  assignCaseInstance,
+  getQueue,
+  listCaseInstances,
+  listUsers,
+  removeQueueMember,
+  updateQueue,
+} from "../api/client";
 
 interface QueueEditorProps {
   queueId: string;
@@ -34,14 +43,22 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
   const [saving, setSaving] = useState(false);
   const [memberToAdd, setMemberToAdd] = useState("");
   const [memberError, setMemberError] = useState<string | null>(null);
+  const [unassignedCases, setUnassignedCases] = useState<CaseInstanceSummary[]>([]);
+  const [assignTo, setAssignTo] = useState<Record<string, string>>({});
+  const [caseError, setCaseError] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
-    Promise.all([getQueue(queueId), listUsers()])
-      .then(([q, u]) => {
+    Promise.all([
+      getQueue(queueId),
+      listUsers(),
+      listCaseInstances({ assignedQueueId: queueId, unassigned: "true", status: "OPEN" }),
+    ])
+      .then(([q, u, cases]) => {
         setQueue(q);
         setName(q.name);
         setUsers(u);
+        setUnassignedCases(cases);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load queue."))
       .finally(() => setLoading(false));
@@ -81,6 +98,18 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
       setQueue((prev) => (prev ? { ...prev, memberUserIds: prev.memberUserIds.filter((id) => id !== userId) } : prev));
     } catch (err) {
       setMemberError(err instanceof Error ? err.message : "Failed to remove member.");
+    }
+  }
+
+  async function handleAssign(caseInstanceId: string) {
+    const userId = assignTo[caseInstanceId];
+    if (!userId) return;
+    setCaseError(null);
+    try {
+      await assignCaseInstance(caseInstanceId, { assignedToUserId: userId });
+      setUnassignedCases((prev) => prev.filter((c) => c.id !== caseInstanceId));
+    } catch (err) {
+      setCaseError(err instanceof Error ? err.message : "Failed to assign case.");
     }
   }
 
@@ -178,6 +207,69 @@ export function QueueEditor({ queueId, onBack }: QueueEditorProps) {
           Add
         </Button>
       </Stack>
+
+      <Typography variant="subtitle2" sx={{ mt: 4, mb: 1 }}>
+        Unassigned Cases in This Queue
+      </Typography>
+      {caseError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {caseError}
+        </Alert>
+      )}
+      <Paper variant="outlined">
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Case Type</TableCell>
+              <TableCell>Customer Account</TableCell>
+              <TableCell>Opened</TableCell>
+              <TableCell align="right">Assign to</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {unassignedCases.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell>{c.caseTypeName}</TableCell>
+                <TableCell>{c.customerAccountId ?? "—"}</TableCell>
+                <TableCell>{formatDateTime(c.createdAt)}</TableCell>
+                <TableCell align="right">
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <TextField
+                      select
+                      label="Assign to"
+                      size="small"
+                      value={assignTo[c.id] ?? ""}
+                      onChange={(e) => setAssignTo((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      sx={{ minWidth: 200 }}
+                    >
+                      {queue.memberUserIds.map((userId) => (
+                        <MenuItem key={userId} value={userId}>
+                          {userById.get(userId)?.name ?? userId}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={!assignTo[c.id]}
+                      onClick={() => handleAssign(c.id)}
+                    >
+                      Assign
+                    </Button>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            ))}
+            {unassignedCases.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4}>
+                  <Typography color="text.secondary">No unassigned cases in this queue.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
     </Box>
   );
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Prisma } from "../../generated/prisma";
-import type { AdvanceStageInput, CreateCaseInstanceInput } from "@riptacrm/shared-types";
+import type { AdvanceStageInput, AssignCaseInstanceInput, CreateCaseInstanceInput } from "@riptacrm/shared-types";
 import { prisma } from "../db";
 import { toCaseInstanceDetail, toCaseInstanceSummary, toStoredFieldValue } from "../lib/mappers";
 
@@ -104,6 +104,8 @@ caseInstancesRouter.get("/case-instances", async (req, res) => {
   if (query.assignedToUserId) where.assignedToUserId = query.assignedToUserId;
   if (query.status) where.status = query.status;
   if (query.caseTypeId) where.caseTypeId = query.caseTypeId;
+  if (query.assignedQueueId) where.assignedQueueId = query.assignedQueueId;
+  if (query.unassigned === "true") where.assignedToUserId = null;
 
   const instances = await prisma.caseInstance.findMany({
     where,
@@ -121,6 +123,23 @@ caseInstancesRouter.get("/case-instances/:id", async (req, res) => {
   });
   if (!instance) return res.status(404).json({ error: "Case instance not found." });
   res.json(toCaseInstanceDetail(instance));
+});
+
+caseInstancesRouter.patch("/case-instances/:id/assignment", async (req, res) => {
+  const body = req.body as Partial<AssignCaseInstanceInput>;
+  if (!body.assignedToUserId?.trim()) {
+    return res.status(400).json({ error: "assignedToUserId is required." });
+  }
+
+  const instance = await prisma.caseInstance.findUnique({ where: { id: req.params.id } });
+  if (!instance) return res.status(404).json({ error: "Case instance not found." });
+
+  const updated = await prisma.caseInstance.update({
+    where: { id: req.params.id },
+    data: { assignedToUserId: body.assignedToUserId.trim() },
+    include: SUMMARY_INCLUDE,
+  });
+  res.json(toCaseInstanceSummary(updated));
 });
 
 caseInstancesRouter.post("/case-instances/:id/transitions", async (req, res) => {

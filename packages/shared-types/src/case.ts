@@ -184,6 +184,10 @@ export interface AdvanceStageInput {
   toStageId: string;
 }
 
+export interface AssignCaseInstanceInput {
+  assignedToUserId: string;
+}
+
 export interface ActionLogEntry {
   id: string;
   caseInstanceId: string;

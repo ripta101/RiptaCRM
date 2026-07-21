@@ -2,6 +2,7 @@ import type {
   ActionLogEntry,
   AddQueueMemberInput,
   AdvanceStageInput,
+  AssignCaseInstanceInput,
   CaseInstanceDetail,
   CaseInstanceSummary,
   CaseTypeSummary,
@@ -122,6 +123,11 @@ export const transitionCaseInstance = (id: string, input: AdvanceStageInput) =>
   });
 export const deleteCaseInstance = (id: string) =>
   request<void>(`/api/case-instances/${id}`, { method: "DELETE" });
+export const assignCaseInstance = (id: string, input: AssignCaseInstanceInput) =>
+  request<CaseInstanceSummary>(`/api/case-instances/${id}/assignment`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
 
 // Queues
 export const listQueues = () => request<{ results: Queue[] }>("/api/queues").then((r) => r.results);

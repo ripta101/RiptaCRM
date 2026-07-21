@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import { Drawer, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
-import AssignmentIcon from "@mui/icons-material/Assignment";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ChatIcon from "@mui/icons-material/Chat";
 import EmailIcon from "@mui/icons-material/Email";
@@ -14,7 +13,6 @@ import { adminNavItems, frontlineNavItems } from "./navItems";
 
 const ICONS: Record<string, ComponentType> = {
   home: HomeIcon,
-  worklist: AssignmentIcon,
   "it-support": SupportAgentIcon,
   webchat: ChatIcon,
   email: EmailIcon,

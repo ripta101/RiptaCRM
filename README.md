@@ -8,10 +8,11 @@ A modular CRM application built as independent React micro-frontend (MFE) module
 The application frame everything else runs inside. Two roles, two different experiences:
 - Login screen — backed by a real database (the Auth module), with bcrypt-hashed passwords and a JWT session token
 - Top bar with a hamburger menu and a profile menu (Profile, Settings, Logout)
-- **Frontline users** get a Dashboard with case widgets and a way to start customer interactions (persistent tabs — switching tabs doesn't lose your place), plus a Worklist and IT Support menu
+- **Frontline users** get a Dashboard with case widgets and a way to start customer interactions (persistent tabs — switching tabs doesn't lose your place), split into "Dashboard" and "Worklist" tabs, plus an IT Support menu
 - **Business admins** get a Dashboard showing recent configuration changes instead, cannot start interactions, and get a WebChat / Email configuration menu (still placeholders) plus a real Case Management configuration screen
 - Routes are guarded by role — each menu's pages are only reachable by the role they belong to
-- `Worklist`, `IT Support`, `Settings`, `Profile`, and the WebChat / Email configuration pages are placeholder "coming soon" screens for now
+- The Dashboard's "Worklist" tab lists the logged-in frontline user's own assigned open cases (case type, stage, customer account, SLA due, breach status) — read-only for now, no click-through to the customer interaction yet
+- `IT Support`, `Settings`, `Profile`, and the WebChat / Email configuration pages are placeholder "coming soon" screens for now
 - The frontline Dashboard's "Open Cases" widget shows a live count of cases assigned to the logged-in user, sourced from the Case Management module
 - Both roles' Dashboards show an "Announcements" panel on the right, sourced from the Message Broadcast module and auto-refreshing
 
@@ -32,7 +33,7 @@ Lets a business admin design how cases work for the business, then runs the resu
 - Every case type's design (fields + stages + SLA + actions) is versioned as one bundle: admins edit a **draft**, and nothing changes for cases already in progress until the admin explicitly **publishes** it — each case stays pinned to the exact version it was created under, forever
 - A background scheduler checks in-progress cases against their SLA due times and fires configured actions automatically
 - Includes a minimal admin-only screen for creating test case instances (not the polished frontline case-working experience — that's still to come) and an Action Log viewer
-- **Queues**: create named queues, add users as members (by picking from a list, not typing raw IDs), and assign a queue to any stage. When a frontline user lodges a case via the Customer module and the case's starting stage has a queue, the case auto-assigns to them if they're a member, or routes to the queue (visible in the case list's Assigned to column) if not
+- **Queues**: create named queues, add users as members (by picking from a list, not typing raw IDs), and assign a queue to any stage. When a frontline user lodges a case via the Customer module and the case's starting stage has a queue, the case auto-assigns to them if they're a member, or routes to the queue if not. Each queue's own screen lists its unassigned cases and lets an admin hand each one to a specific member — that's how queue-routed work actually gets allocated
 
 ### Auth
 Backend-only module — issues sessions for the Host's login screen; not a module you see directly.

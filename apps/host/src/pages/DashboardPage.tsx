@@ -1,4 +1,5 @@
-import { Box, Button, Typography } from "@mui/material";
+import { useState } from "react";
+import { Box, Button, Tab, Tabs, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useAuth } from "@riptacrm/auth-client";
 import { useInteractions } from "../interactions/InteractionsContext";
@@ -6,10 +7,14 @@ import { OpenCasesWidget } from "../shell/widgets/OpenCasesWidget";
 import { RecentActivityWidget } from "../shell/widgets/RecentActivityWidget";
 import { RecentConfigChangesWidget } from "../shell/widgets/RecentConfigChangesWidget";
 import { BroadcastPanelWidget } from "../shell/widgets/BroadcastPanelWidget";
+import { WorklistTable } from "../shell/widgets/WorklistTable";
+
+type FrontlineTab = "dashboard" | "worklist";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const { openInteraction } = useInteractions();
+  const [tab, setTab] = useState<FrontlineTab>("dashboard");
 
   function handleNewInteraction() {
     openInteraction({
@@ -57,21 +62,31 @@ export function DashboardPage() {
           New Interaction
         </Button>
       </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <OpenCasesWidget />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 8 }}>
-              <RecentActivityWidget />
+
+      <Tabs value={tab} onChange={(_e, value: FrontlineTab) => setTab(value)} sx={{ mb: 3 }}>
+        <Tab label="Dashboard" value="dashboard" />
+        <Tab label="Worklist" value="worklist" />
+      </Tabs>
+
+      {tab === "dashboard" && (
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <OpenCasesWidget />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 8 }}>
+                <RecentActivityWidget />
+              </Grid>
             </Grid>
           </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <BroadcastPanelWidget />
+          </Grid>
         </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <BroadcastPanelWidget />
-        </Grid>
-      </Grid>
+      )}
+
+      {tab === "worklist" && <WorklistTable />}
     </Box>
   );
 }

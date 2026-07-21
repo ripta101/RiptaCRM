@@ -4,7 +4,6 @@ import { RoleRoute } from "./auth/RoleRoute";
 import { AppShell } from "./shell/AppShell";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { WorklistPage } from "./pages/WorklistPage";
 import { ITSupportPage } from "./pages/ITSupportPage";
 import { WebChatConfigPage } from "./pages/WebChatConfigPage";
 import { EmailConfigPage } from "./pages/EmailConfigPage";
@@ -23,7 +22,6 @@ export function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route element={<RoleRoute allow={["frontline"]} />}>
-            <Route path="/worklist" element={<WorklistPage />} />
             <Route path="/it-support" element={<ITSupportPage />} />
           </Route>
           <Route element={<RoleRoute allow={["admin"]} />}>
