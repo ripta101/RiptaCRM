@@ -40,7 +40,7 @@ Backend-only module — issues sessions for the Host's login screen; not a modul
 - `POST /api/auth/login` validates a username/password against a database of users (bcrypt-hashed passwords) and returns a signed JWT + user profile
 - The Host decodes and checks the token's expiry client-side (no network call on every page load); the token is what future SAML/SSO integration would replace or bridge into, without needing to change how the rest of the app consumes `useAuth()`
 - `GET /api/users` lists users (no password data) — used by the Case Management module's queue-member picker, proxied server-to-server rather than called directly from any browser
-- Seeded with two demo users (`test`/`Passw0rd154@` frontline, `admin`/`Passw0rd154@` business admin) — no user-management UI yet, that's a future feature
+- Seeded with 12 demo users, all password `Passw0rd154@`: `test` and `test1`-`test10` (frontline, e.g. for populating queue membership with multiple distinct members) and `admin` (business admin) — no user-management UI yet, that's a future feature
 
 ### Message Broadcast
 Lets a business admin push announcements to logged-in users.

@@ -27,6 +27,20 @@ async function main() {
       role: "admin",
     },
   });
+
+  const extraFrontlinePasswordHash = await hashPassword("Passw0rd154@");
+  for (let n = 1; n <= 10; n++) {
+    await prisma.user.create({
+      data: {
+        id: `user-frontline-${n}`,
+        username: `test${n}`,
+        passwordHash: extraFrontlinePasswordHash,
+        name: `Test User ${n}`,
+        email: `test${n}@riptacrm.example`,
+        role: "frontline",
+      },
+    });
+  }
 }
 
 main()
