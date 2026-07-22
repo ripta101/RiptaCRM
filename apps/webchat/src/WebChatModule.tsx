@@ -5,8 +5,9 @@ import { SiteEditor } from "./components/SiteEditor";
 import { QueueList } from "./components/QueueList";
 import { QueueEditor } from "./components/QueueEditor";
 import { CapacityOverrideEditor } from "./components/CapacityOverrideEditor";
+import { AgentStatusOptionEditor } from "./components/AgentStatusOptionEditor";
 
-type TopTab = "sites" | "queues" | "capacityOverrides";
+type TopTab = "sites" | "queues" | "capacityOverrides" | "agentStatuses";
 
 interface WebChatModuleProps {
   authToken?: string | null;
@@ -31,6 +32,7 @@ export default function WebChatModule({ authToken }: WebChatModuleProps) {
         <Tab label="Sites" value="sites" />
         <Tab label="Queues" value="queues" />
         <Tab label="Capacity Overrides" value="capacityOverrides" />
+        <Tab label="Agent Statuses" value="agentStatuses" />
       </Tabs>
 
       {tab === "sites" &&
@@ -48,6 +50,8 @@ export default function WebChatModule({ authToken }: WebChatModuleProps) {
         ))}
 
       {tab === "capacityOverrides" && <CapacityOverrideEditor authToken={authToken} />}
+
+      {tab === "agentStatuses" && <AgentStatusOptionEditor authToken={authToken} />}
     </Box>
   );
 }

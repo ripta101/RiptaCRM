@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppBar, Avatar, Divider, IconButton, Menu, MenuItem, Toolbar, Typography } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAuth } from "@riptacrm/auth-client";
+import { AgentStatusSelector } from "../webchat/AgentStatusSelector";
 
 export const TOP_BAR_HEIGHT = 64;
 
@@ -49,6 +50,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           RiptaCRM
         </Typography>
+        <AgentStatusSelector />
         <IconButton onClick={handleOpen} size="small" aria-label="account menu">
           <Avatar sx={{ width: 32, height: 32 }} src={user?.avatarUrl}>
             {user?.name?.[0] ?? "?"}

@@ -76,3 +76,21 @@ export async function grantCapacityOverride(userId: string, maxConcurrentChats: 
 export async function deleteCapacityOverride(userId: string): Promise<void> {
   await request(`/api/capacity-overrides/${userId}`, { method: "DELETE" }).catch(() => undefined);
 }
+
+export interface AgentStatusOption {
+  id: string;
+  label: string;
+  isAvailableForChats: boolean;
+}
+
+export async function getAgentStatusOptions(): Promise<AgentStatusOption[]> {
+  const { results } = await request<{ results: AgentStatusOption[] }>("/api/agent-status-options");
+  return results;
+}
+
+// Uses the admin escape hatch (PUT /api/agent-status/:userId), not the self-service /me
+// route — test setup here is about seeding a *different* user's status than whichever
+// agent the spec logs in as, not exercising the TopBar status picker itself.
+export async function setAgentStatus(userId: string, optionId: string | null): Promise<void> {
+  await request(`/api/agent-status/${userId}`, { method: "PUT", body: JSON.stringify({ optionId }) });
+}

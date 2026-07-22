@@ -5,7 +5,7 @@ import { prisma } from "../db";
 import { verifyAuthToken } from "../lib/jwt";
 import { toConversation, toConversationWithMessages, toMessage } from "../lib/mappers";
 import { requirePermission } from "../lib/requirePermission";
-import { resolveEffectiveCapacity } from "../services/routeConversation";
+import { isAvailableForChats, resolveEffectiveCapacity } from "../services/routeConversation";
 import { emitToAgent, emitToConversationRoom } from "../ws/socketServer";
 
 export const conversationsRouter = Router();
@@ -99,7 +99,7 @@ conversationsRouter.post("/conversations/:id/assign", requirePermission("webchat
 
   const updated = await prisma.conversation.update({
     where: { id: req.params.id },
-    data: { assignedToUserId: body.assignedToUserId.trim() },
+    data: { assignedToUserId: body.assignedToUserId.trim(), assignedAt: new Date() },
   });
 
   await emitAssignment(getIo(req), updated.id, updated.assignedToUserId, updated.assignedQueueId);
@@ -130,6 +130,10 @@ conversationsRouter.post("/conversations/:id/claim", requirePermission("webchat-
     return res.status(403).json({ error: "You are not a member of this conversation's queue." });
   }
 
+  if (!(await isAvailableForChats(claimantId))) {
+    return res.status(409).json({ error: "Set your status to an available status before claiming chats." });
+  }
+
   const [currentLoad, effectiveCapacity] = await Promise.all([
     prisma.conversation.count({ where: { assignedToUserId: claimantId, status: "OPEN" } }),
     resolveEffectiveCapacity(claimantId),
@@ -140,7 +144,7 @@ conversationsRouter.post("/conversations/:id/claim", requirePermission("webchat-
 
   const result = await prisma.conversation.updateMany({
     where: { id: req.params.id, assignedToUserId: null },
-    data: { assignedToUserId: claimantId },
+    data: { assignedToUserId: claimantId, assignedAt: new Date() },
   });
   if (result.count === 0) {
     return res.status(409).json({ error: "This conversation was just claimed by someone else." });
@@ -191,7 +195,7 @@ async function emitAssignment(
 // so they re-verify the same token here rather than changing the shared middleware's
 // contract for every other route in this service and its four siblings. A service-key call
 // (no JWT at all) correctly yields null here — claiming/messaging needs a real agent identity.
-function extractUserId(authHeader: string | undefined): string | null {
+export function extractUserId(authHeader: string | undefined): string | null {
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
   if (!token) return null;
   try {

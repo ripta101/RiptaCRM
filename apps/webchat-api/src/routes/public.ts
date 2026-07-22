@@ -72,6 +72,7 @@ publicRouter.post("/conversations", startConversationLimiter, async (req, res) =
       pageUrlFull: body.pageUrlFull?.trim() || null,
       assignedQueueId: routed.assignedQueueId,
       assignedToUserId: routed.assignedToUserId,
+      assignedAt: routed.assignedToUserId ? new Date() : null,
       matchedRuleId: routed.matchedRuleId,
       messages: routed.autoReplyText
         ? { create: [{ senderType: "SYSTEM", body: routed.autoReplyText }] }

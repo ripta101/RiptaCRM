@@ -1,5 +1,7 @@
 import type {
   AgentCapacityOverride as PrismaAgentCapacityOverride,
+  AgentStatus as PrismaAgentStatus,
+  AgentStatusOption as PrismaAgentStatusOption,
   Conversation as PrismaConversation,
   Message as PrismaMessage,
   RoutingRule as PrismaRoutingRule,
@@ -9,6 +11,8 @@ import type {
 } from "../../generated/prisma";
 import type {
   AgentCapacityOverride,
+  AgentStatus,
+  AgentStatusOption,
   Conversation,
   ConversationWithMessages,
   Message,
@@ -59,6 +63,20 @@ export function toRoutingRule(r: PrismaRoutingRule): RoutingRule {
 
 export function toAgentCapacityOverride(o: PrismaAgentCapacityOverride): AgentCapacityOverride {
   return { userId: o.userId, maxConcurrentChats: o.maxConcurrentChats };
+}
+
+export function toAgentStatusOption(o: PrismaAgentStatusOption): AgentStatusOption {
+  return {
+    id: o.id,
+    label: o.label,
+    isAvailableForChats: o.isAvailableForChats,
+    createdAt: o.createdAt.toISOString(),
+    updatedAt: o.updatedAt.toISOString(),
+  };
+}
+
+export function toAgentStatus(s: PrismaAgentStatus): AgentStatus {
+  return { optionId: s.optionId, updatedAt: s.updatedAt.toISOString() };
 }
 
 export function toConversation(c: PrismaConversation): Conversation {

@@ -11,6 +11,8 @@ const createdSiteIds: string[] = [];
 const createdQueueIds: string[] = [];
 const createdConversationIds: string[] = [];
 const createdOverrideUserIds: string[] = [];
+const createdStatusUserIds: string[] = [];
+const createdStatusOptionIds: string[] = [];
 
 afterEach(async () => {
   await prisma.message.deleteMany({ where: { conversationId: { in: createdConversationIds } } });
@@ -19,7 +21,21 @@ afterEach(async () => {
   await prisma.webChatQueueMember.deleteMany({ where: { queueId: { in: createdQueueIds } } });
   await prisma.webChatQueue.deleteMany({ where: { id: { in: createdQueueIds.splice(0) } } });
   await prisma.agentCapacityOverride.deleteMany({ where: { userId: { in: createdOverrideUserIds.splice(0) } } });
+  await prisma.agentStatus.deleteMany({ where: { userId: { in: createdStatusUserIds.splice(0) } } });
+  await prisma.agentStatusOption.deleteMany({ where: { id: { in: createdStatusOptionIds.splice(0) } } });
 });
+
+// Claim now requires the caller to have a status marked isAvailableForChats — this creates
+// a throwaway option (rather than relying on any seeded one) so this test file has no
+// dependency on seed data.
+async function grantAvailableStatus(userId: string) {
+  const option = await prisma.agentStatusOption.create({
+    data: { label: `Available ${randomUUID()}`, isAvailableForChats: true },
+  });
+  createdStatusOptionIds.push(option.id);
+  await prisma.agentStatus.create({ data: { userId, optionId: option.id } });
+  createdStatusUserIds.push(userId);
+}
 
 async function setupSite() {
   const site = await request(app).post("/api/sites").set(SERVICE_KEY_HEADER).send({ name: `Site ${randomUUID()}` });
@@ -131,6 +147,7 @@ describe("POST /conversations/:id/claim", () => {
     // grant must be set up for that exact id, not an arbitrary generated one.
     const queueId = await setupQueueWithMember("test-user");
     await grantCapacity("test-user", 2);
+    await grantAvailableStatus("test-user");
     const conversation = await createConversation(siteId, queueId, null);
     const token = signTestToken(["webchat-agent"]);
 
@@ -155,6 +172,7 @@ describe("POST /conversations/:id/claim", () => {
     const siteId = await setupSite();
     const queueId = await setupQueueWithMember("test-user");
     await grantCapacity("test-user", 2);
+    await grantAvailableStatus("test-user");
     const conversation = await createConversation(siteId, queueId, "someone-else");
     const token = signTestToken(["webchat-agent"]);
 
@@ -166,8 +184,21 @@ describe("POST /conversations/:id/claim", () => {
     const siteId = await setupSite();
     const queueId = await setupQueueWithMember("test-user");
     await grantCapacity("test-user", 1);
+    await grantAvailableStatus("test-user");
     // Already-open chat consuming the caller's only slot.
     await createConversation(siteId, queueId, "test-user");
+    const conversation = await createConversation(siteId, queueId, null);
+    const token = signTestToken(["webchat-agent"]);
+
+    const res = await request(app).post(`/api/conversations/${conversation.id}/claim`).set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(409);
+  });
+
+  it("409s when the caller has no available status set", async () => {
+    const siteId = await setupSite();
+    const queueId = await setupQueueWithMember("test-user");
+    await grantCapacity("test-user", 2);
+    // Deliberately no grantAvailableStatus call — the caller has never set a status.
     const conversation = await createConversation(siteId, queueId, null);
     const token = signTestToken(["webchat-agent"]);
 
@@ -179,6 +210,7 @@ describe("POST /conversations/:id/claim", () => {
     const siteId = await setupSite();
     const queueId = await setupQueueWithMember("test-user");
     await grantCapacity("test-user", 5);
+    await grantAvailableStatus("test-user");
     const conversation = await createConversation(siteId, queueId, null);
     const token = signTestToken(["webchat-agent"]);
 

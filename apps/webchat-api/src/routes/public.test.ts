@@ -10,6 +10,8 @@ const app = createApp();
 const createdSiteIds: string[] = [];
 const createdQueueIds: string[] = [];
 const createdConversationIds: string[] = [];
+const createdStatusUserIds: string[] = [];
+const createdStatusOptionIds: string[] = [];
 
 afterEach(async () => {
   await prisma.message.deleteMany({ where: { conversationId: { in: createdConversationIds } } });
@@ -17,7 +19,20 @@ afterEach(async () => {
   await prisma.routingRule.deleteMany({ where: { siteId: { in: createdSiteIds } } });
   await prisma.site.deleteMany({ where: { id: { in: createdSiteIds.splice(0) } } });
   await prisma.webChatQueue.deleteMany({ where: { id: { in: createdQueueIds.splice(0) } } });
+  await prisma.agentStatus.deleteMany({ where: { userId: { in: createdStatusUserIds.splice(0) } } });
+  await prisma.agentStatusOption.deleteMany({ where: { id: { in: createdStatusOptionIds.splice(0) } } });
 });
+
+// Auto-assignment now requires a candidate to have a status marked isAvailableForChats
+// (see services/routeConversation.ts) — a throwaway option per test, not seed data.
+async function grantAvailableStatus(userId: string) {
+  const option = await prisma.agentStatusOption.create({
+    data: { label: `Available ${randomUUID()}`, isAvailableForChats: true },
+  });
+  createdStatusOptionIds.push(option.id);
+  await prisma.agentStatus.create({ data: { userId, optionId: option.id } });
+  createdStatusUserIds.push(userId);
+}
 
 async function setupSiteWithRule(overrides: { allowedOrigins?: string } = {}) {
   const queue = await request(app).post("/api/queues").set(SERVICE_KEY_HEADER).send({ name: `Queue ${randomUUID()}` });
@@ -188,5 +203,47 @@ describe("Public CORS origin validation", () => {
       .send({ siteKey, pageUrlPath: "/support" });
     createdConversationIds.push(res.body.id);
     expect(res.headers["access-control-allow-origin"]).toBe("https://trusted.example");
+  });
+});
+
+describe("Auto-assignment fairness (round-robin + status gating)", () => {
+  it("distributes consecutive conversations round-robin across available members, not by spare capacity", async () => {
+    const { siteKey, queueId } = await setupSiteWithRule();
+    const highCapacity = `user-${randomUUID()}`;
+    const lowCapacity = `user-${randomUUID()}`;
+    await request(app).post(`/api/queues/${queueId}/members`).set(SERVICE_KEY_HEADER).send({ userId: highCapacity });
+    await request(app).post(`/api/queues/${queueId}/members`).set(SERVICE_KEY_HEADER).send({ userId: lowCapacity });
+    await request(app).put(`/api/capacity-overrides/${highCapacity}`).set(SERVICE_KEY_HEADER).send({ maxConcurrentChats: 5 });
+    await request(app).put(`/api/capacity-overrides/${lowCapacity}`).set(SERVICE_KEY_HEADER).send({ maxConcurrentChats: 1 });
+    await grantAvailableStatus(highCapacity);
+    await grantAvailableStatus(lowCapacity);
+
+    const first = await request(app).post("/api/public/conversations").send({ siteKey, pageUrlPath: "/support" });
+    createdConversationIds.push(first.body.id);
+    const second = await request(app).post("/api/public/conversations").send({ siteKey, pageUrlPath: "/support" });
+    createdConversationIds.push(second.body.id);
+
+    // The reported real-world case: the high-capacity member getting the first chat must
+    // not make them "sticky" for the second one too — the never-yet-assigned member (even
+    // with far less capacity) goes next.
+    expect(second.body.assignedToUserId).not.toBe(first.body.assignedToUserId);
+    expect([highCapacity, lowCapacity]).toContain(first.body.assignedToUserId);
+    expect([highCapacity, lowCapacity]).toContain(second.body.assignedToUserId);
+  });
+
+  it("skips a queue member without an available status, even though they have spare capacity", async () => {
+    const { siteKey, queueId } = await setupSiteWithRule();
+    const notReady = `user-${randomUUID()}`;
+    const ready = `user-${randomUUID()}`;
+    await request(app).post(`/api/queues/${queueId}/members`).set(SERVICE_KEY_HEADER).send({ userId: notReady });
+    await request(app).post(`/api/queues/${queueId}/members`).set(SERVICE_KEY_HEADER).send({ userId: ready });
+    await request(app).put(`/api/capacity-overrides/${notReady}`).set(SERVICE_KEY_HEADER).send({ maxConcurrentChats: 5 });
+    await request(app).put(`/api/capacity-overrides/${ready}`).set(SERVICE_KEY_HEADER).send({ maxConcurrentChats: 5 });
+    // notReady is deliberately left with no AgentStatus row at all.
+    await grantAvailableStatus(ready);
+
+    const res = await request(app).post("/api/public/conversations").send({ siteKey, pageUrlPath: "/support" });
+    createdConversationIds.push(res.body.id);
+    expect(res.body.assignedToUserId).toBe(ready);
   });
 });

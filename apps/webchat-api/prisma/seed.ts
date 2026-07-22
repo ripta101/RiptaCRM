@@ -17,6 +17,16 @@ async function main() {
   await prisma.webChatQueueMember.deleteMany();
   await prisma.agentCapacityOverride.deleteMany();
   await prisma.webChatQueue.deleteMany();
+  await prisma.agentStatus.deleteMany();
+  await prisma.agentStatusOption.deleteMany();
+
+  await prisma.agentStatusOption.createMany({
+    data: [
+      { label: "Available", isAvailableForChats: true },
+      { label: "Lunch", isAvailableForChats: false },
+      { label: "Administration", isAvailableForChats: false },
+    ],
+  });
 
   const generalSupport = await prisma.webChatQueue.create({
     data: {

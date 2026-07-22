@@ -68,6 +68,35 @@ export interface AgentCapacityOverride {
   maxConcurrentChats: number;
 }
 
+// Admin-configurable list an agent picks from (e.g. Available, Lunch, Administration) —
+// only options with isAvailableForChats are eligible to receive/claim chats.
+export interface AgentStatusOption {
+  id: string;
+  label: string;
+  isAvailableForChats: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAgentStatusOptionInput {
+  label: string;
+  isAvailableForChats?: boolean;
+}
+
+export type UpdateAgentStatusOptionInput = Partial<CreateAgentStatusOptionInput>;
+
+// The logged-in agent's own current pick — always "mine," no userId needed client-side.
+// Cleared (optionId: null) server-side on every login/logout — see webchat-api's
+// ws/socketServer.ts.
+export interface AgentStatus {
+  optionId: string | null;
+  updatedAt: string;
+}
+
+export interface SetAgentStatusInput {
+  optionId: string | null;
+}
+
 export type ConversationStatus = "OPEN" | "CLOSED";
 
 export type MessageSenderType = "VISITOR" | "AGENT" | "SYSTEM";

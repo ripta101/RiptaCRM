@@ -39,6 +39,14 @@ test.describe("WebChat", () => {
         timeout: 10_000,
       });
 
+      // The agent's status is cleared server-side on every login (see webchat-api's
+      // ws/socketServer.ts) — this must happen AFTER the socket-connected wait above, or
+      // the very act of connecting would immediately wipe the status right back out. Picked
+      // via the real TopBar control, not a fixture, so this spec also covers the actual
+      // status-picker UI end-to-end, not just the backend eligibility gate.
+      await page.getByTestId("agent-status-selector").click();
+      await page.getByRole("option", { name: "Available" }).click();
+
       // Visiting /support.html triggers the widget's own POST /api/public/conversations —
       // capture its response to learn the conversation id (for targeted cleanup) without
       // needing an admin lookup.

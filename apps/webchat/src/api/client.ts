@@ -1,14 +1,17 @@
 import type {
   AddWebChatQueueMemberInput,
   AgentCapacityOverride,
+  AgentStatusOption,
   Conversation,
   ConversationWithMessages,
+  CreateAgentStatusOptionInput,
   CreateRoutingRuleInput,
   CreateSiteInput,
   CreateWebChatQueueInput,
   Message,
   RoutingRule,
   Site,
+  UpdateAgentStatusOptionInput,
   UpdateRoutingRuleInput,
   UpdateSiteInput,
   UpdateWebChatQueueInput,
@@ -90,6 +93,16 @@ export const putCapacityOverride = (userId: string, maxConcurrentChats: number, 
   );
 export const deleteCapacityOverride = (userId: string, token?: string | null) =>
   request<void>(`/api/capacity-overrides/${userId}`, { method: "DELETE" }, token);
+
+// Agent status options
+export const listAgentStatusOptions = (token?: string | null) =>
+  request<{ results: AgentStatusOption[] }>("/api/agent-status-options", undefined, token).then((r) => r.results);
+export const createAgentStatusOption = (input: CreateAgentStatusOptionInput, token?: string | null) =>
+  request<AgentStatusOption>("/api/agent-status-options", { method: "POST", body: JSON.stringify(input) }, token);
+export const updateAgentStatusOption = (id: string, input: UpdateAgentStatusOptionInput, token?: string | null) =>
+  request<AgentStatusOption>(`/api/agent-status-options/${id}`, { method: "PATCH", body: JSON.stringify(input) }, token);
+export const deleteAgentStatusOption = (id: string, token?: string | null) =>
+  request<void>(`/api/agent-status-options/${id}`, { method: "DELETE" }, token);
 
 // Conversations
 export const listConversations = (params: Record<string, string | undefined> = {}, token?: string | null) => {

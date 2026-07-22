@@ -54,6 +54,24 @@ model AgentCapacityOverride {
   updatedAt          DateTime @updatedAt
 }
 
+model AgentStatusOption {
+  id                  String   @id @default(uuid())
+  label               String   @unique
+  isAvailableForChats Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  agentStatuses AgentStatus[]
+}
+
+model AgentStatus {
+  id        String             @id @default(uuid())
+  userId    String             @unique // plain, unvalidated — mirrors AgentCapacityOverride.userId
+  optionId  String?
+  option    AgentStatusOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  updatedAt DateTime           @updatedAt
+}
+
 model RoutingRule {
   id            String       @id @default(uuid())
   siteId        String
@@ -81,6 +99,10 @@ model Conversation {
   assignedQueueId   String?
   assignedQueue     WebChatQueue? @relation("AssignedQueue", fields: [assignedQueueId], references: [id], onDelete: SetNull)
   matchedRuleId     String?
+  // Set whenever assignedToUserId is set (auto-route, admin /assign, self /claim) — the
+  // basis for round-robin-by-recency candidate ordering in lib/assignment.ts. Distinct from
+  // createdAt: a conversation can be created unassigned and picked up later.
+  assignedAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   closedAt          DateTime?

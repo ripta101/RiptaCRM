@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { publicCors } from "./lib/originValidator";
+import { agentStatusRouter } from "./routes/agentStatus";
 import { capacityOverridesRouter } from "./routes/capacityOverrides";
 import { conversationsRouter } from "./routes/conversations";
 import { publicRouter } from "./routes/public";
@@ -35,6 +36,7 @@ export function createApp() {
   app.use("/api", cors({ origin: origins }), queuesRouter);
   app.use("/api", cors({ origin: origins }), routingRulesRouter);
   app.use("/api", cors({ origin: origins }), capacityOverridesRouter);
+  app.use("/api", cors({ origin: origins }), agentStatusRouter);
   app.use("/api", cors({ origin: origins }), conversationsRouter);
   app.use("/api", cors({ origin: origins }), usersRouter);
 

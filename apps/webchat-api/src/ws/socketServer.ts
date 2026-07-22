@@ -19,6 +19,14 @@ export function emitToAgent(io: Server, userId: string, event: string, payload: 
   io.of("/agents").to(`agent:${userId}`).emit(event, payload);
 }
 
+async function clearAgentStatus(userId: string): Promise<void> {
+  await prisma.agentStatus.upsert({
+    where: { userId },
+    create: { userId, optionId: null },
+    update: { optionId: null },
+  });
+}
+
 // Two namespaces on one socket.io Server, attached to the same HTTP server Express already
 // listens on — no extra process/port. Sockets never mutate data (see routes/public.ts and
 // routes/conversations.ts, which do the writes and emit here); this file only handles
@@ -70,11 +78,22 @@ export function attachSocketServer(httpServer: HttpServer): Server {
   agentsNamespace.on("connection", (socket) => {
     socket.join(`agent:${socket.data.userId}`);
 
+    // AgentSocketProvider (Host) opens this connection once per login session and
+    // disconnects it on logout — a reliable proxy for "session start/end" (reconnects reuse
+    // the same client-side socket and don't re-trigger it). Clearing status on both connect
+    // and disconnect means an agent must consciously pick a status each session, per the
+    // confirmed requirement. Both are idempotent upserts, safe to run more than once (e.g.
+    // React StrictMode's dev-mode double-mount).
+    clearAgentStatus(socket.data.userId);
+
     socket.on("join-conversation", ({ conversationId }: { conversationId: string }) => {
       socket.join(`conversation:${conversationId}`);
     });
     socket.on("leave-conversation", ({ conversationId }: { conversationId: string }) => {
       socket.leave(`conversation:${conversationId}`);
+    });
+    socket.on("disconnect", () => {
+      clearAgentStatus(socket.data.userId);
     });
   });
 
