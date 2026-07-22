@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { MenuItem, Select, type SelectChangeEvent } from "@mui/material";
 import { useAuth } from "@riptacrm/auth-client";
 import type { AgentStatusOption } from "@riptacrm/shared-types";
-import { getMyAgentStatus, listAgentStatusOptions, setMyAgentStatus } from "../api/webchatClient";
+import { getMyAgentStatus, listAgentStatusOptions, listChatWorklist, setMyAgentStatus } from "../api/webchatClient";
+import { useInteractions } from "../interactions/InteractionsContext";
 
 const UNSET = "__unset__";
 
@@ -12,10 +13,40 @@ const UNSET = "__unset__";
 // fresh one each session; it doesn't own the "cleared" behavior itself.
 export function AgentStatusSelector() {
   const { user } = useAuth();
+  const { openInteraction } = useInteractions();
   const canWorkChats = Boolean(user?.navItemIds.includes("webchat-agent"));
   const [options, setOptions] = useState<AgentStatusOption[]>([]);
   const [optionId, setOptionId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+
+  // "chat:assigned" (AgentSocketProvider) only reaches an agent whose socket happens to
+  // already be connected and joined at the exact instant a chat is assigned — it's a
+  // one-shot emit with no persistence or replay. Status is also always cleared on every
+  // connect (see socketServer.ts), so "just connected" and "actually available" are never
+  // simultaneously true — becoming available is the only reliable moment to catch up on
+  // anything assigned in the meantime. This only ever reads conversations already assigned
+  // to *this* userId (assignment itself is unchanged, still exclusive/atomic server-side),
+  // so it can't cause a chat to end up handed to more than one agent.
+  async function catchUpOnMissedAssignments(token: string, userId: string) {
+    try {
+      const items = await listChatWorklist(userId, token);
+      for (const item of items) {
+        if (item.kind !== "webchat" || item.claimable || !item.autoPopup) continue;
+        openInteraction({
+          // Same stable id convention as AgentSocketProvider/WorklistTable — dedupes against
+          // a tab already open for this conversation instead of opening a second one.
+          id: `webchat-${item.id}`,
+          title: "Web Chat",
+          kind: "webchat",
+          openedAt: Date.now(),
+          meta: { conversationId: item.id },
+        });
+      }
+    } catch {
+      // Best-effort catch-up — a failure here shouldn't block the status picker itself; the
+      // chat is still safely sitting in the Worklist either way.
+    }
+  }
 
   useEffect(() => {
     if (!canWorkChats || !user?.token) return;
@@ -27,6 +58,9 @@ export function AgentStatusSelector() {
         setOptions(opts);
         setOptionId(status?.optionId ?? null);
         setLoaded(true);
+
+        const isAlreadyAvailable = opts.find((o) => o.id === status?.optionId)?.isAvailableForChats;
+        if (isAlreadyAvailable && user.id) void catchUpOnMissedAssignments(user.token!, user.id);
       })
       .catch(() => {
         // Non-critical widget — a failure here shouldn't block the rest of the shell from
@@ -46,6 +80,8 @@ export function AgentStatusSelector() {
     setOptionId(nextId); // optimistic — this is a low-stakes, easily-corrected preference
     try {
       await setMyAgentStatus(nextId, user?.token);
+      const becameAvailable = options.find((o) => o.id === nextId)?.isAvailableForChats;
+      if (becameAvailable && user?.token && user.id) await catchUpOnMissedAssignments(user.token, user.id);
     } catch {
       setOptionId((prev) => prev); // leave as-is; a stale display is better than reverting mid-click
     }

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { loginAsFrontline } from "../fixtures/auth";
-import { deleteConversation } from "../fixtures/webchatApi";
+import { deleteConversation, getAgentStatusOptions, setAgentStatus } from "../fixtures/webchatApi";
 
 // Reuses the seeded demo Site (siteKey embedded directly in apps/webchat-sample-site's
 // static pages) and its "General Support" queue (autoPopup: true, seeded members include
@@ -8,6 +8,8 @@ import { deleteConversation } from "../fixtures/webchatApi";
 // throwaway fixtures, since a throwaway siteKey can't be embedded into the sample site's
 // already-built static HTML at test time.
 const SAMPLE_SITE_URL = "http://localhost:5180";
+const WEBCHAT_API_URL = "http://localhost:4315";
+const DEMO_SITE_KEY = "demo-site-key-please-change";
 
 test.describe("WebChat", () => {
   test("a visitor message on the sample site auto-pops into the assigned agent's interaction tab, and the agent's reply reaches the visitor", async ({
@@ -112,6 +114,47 @@ test.describe("WebChat", () => {
       await expect(page.locator("iframe[title='Chat with us']")).toBeVisible();
     } finally {
       if (conversationId) await deleteConversation(conversationId);
+    }
+  });
+
+  test("a chat assigned before the agent's session started still screen-pops once they go available", async ({
+    page,
+    request,
+  }) => {
+    // Regression test for a reported bug: "chat:assigned" (AgentSocketProvider) is a
+    // one-shot socket emit with no persistence — it only reaches an agent whose socket is
+    // already connected and joined at the exact instant a chat is assigned. Here the
+    // conversation is assigned to "user-1" via the public API *before* their browser
+    // session (and its socket) even exists, simulating a chat that was missed. The fix
+    // (AgentStatusSelector's catch-up-on-becoming-available check) should still screen-pop
+    // it the moment they pick an available status, with no manual Worklist visit needed.
+    let conversationId: string | undefined;
+
+    try {
+      const options = await getAgentStatusOptions();
+      const available = options.find((o) => o.isAvailableForChats);
+      expect(available, "seed data must include an isAvailableForChats status option").toBeTruthy();
+
+      await setAgentStatus("user-1", available!.id);
+      const startResponse = await request.post(`${WEBCHAT_API_URL}/api/public/conversations`, {
+        data: { siteKey: DEMO_SITE_KEY, pageUrlPath: "/support.html" },
+      });
+      const started = await startResponse.json();
+      conversationId = started.id as string;
+      expect(started.assignedToUserId).toBe("user-1");
+
+      await loginAsFrontline(page);
+      await expect(page.getByTestId("webchat-agent-socket-status")).toHaveAttribute("data-connected", "true", {
+        timeout: 10_000,
+      });
+
+      await page.getByTestId("agent-status-selector").click();
+      await page.getByRole("option", { name: "Available" }).click();
+
+      await expect(page.getByRole("tab", { name: /Web Chat/i })).toBeVisible({ timeout: 10_000 });
+    } finally {
+      if (conversationId) await deleteConversation(conversationId);
+      await setAgentStatus("user-1", null);
     }
   });
 });

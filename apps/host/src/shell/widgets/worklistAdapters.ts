@@ -12,5 +12,7 @@ export function caseToWorklistItem(c: CaseInstanceSummary): WorklistItem {
     // Cases have no click-through yet (per README — "read-only for now") — never claimable,
     // matching WorklistTable's existing case-row behavior before this generalization.
     claimable: false,
+    // Screen-pop is a webchat-only concept — cases never auto-pop.
+    autoPopup: false,
   };
 }

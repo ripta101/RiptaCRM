@@ -32,7 +32,10 @@ conversationsRouter.get(
     if (!userId) return res.status(400).json({ error: "userId query parameter is required." });
 
     const [assigned, memberships] = await Promise.all([
-      prisma.conversation.findMany({ where: { assignedToUserId: userId, status: "OPEN" } }),
+      prisma.conversation.findMany({
+        where: { assignedToUserId: userId, status: "OPEN" },
+        include: { assignedQueue: true },
+      }),
       prisma.webChatQueueMember.findMany({ where: { userId } }),
     ]);
 
@@ -40,6 +43,7 @@ conversationsRouter.get(
     const claimable = memberQueueIds.length
       ? await prisma.conversation.findMany({
           where: { status: "OPEN", assignedToUserId: null, assignedQueueId: { in: memberQueueIds } },
+          include: { assignedQueue: true },
         })
       : [];
 
@@ -52,7 +56,7 @@ conversationsRouter.get(
 );
 
 function toWorklistItem(
-  c: { id: string; pageUrlPath: string; createdAt: Date; status: string },
+  c: { id: string; pageUrlPath: string; createdAt: Date; status: string; assignedQueue: { autoPopup: boolean } | null },
   claimable: boolean,
 ): WorklistItem {
   return {
@@ -64,6 +68,7 @@ function toWorklistItem(
     breached: false,
     status: c.status,
     claimable,
+    autoPopup: c.assignedQueue?.autoPopup ?? false,
   };
 }
 

@@ -14,4 +14,9 @@ export interface WorklistItem {
   // false = already assigned to the requesting user, just needs opening. true = unclaimed
   // but in a queue the requesting user is a member of — offer a "Claim" action instead.
   claimable: boolean;
+  // Webchat-only: whether this item's queue is configured to screen-pop. Always false for
+  // "case" items. Lets a client catch up on a chat that was assigned while the agent's
+  // socket wasn't connected to receive the real-time "chat:assigned" event — see
+  // apps/host/src/webchat/AgentStatusSelector.tsx.
+  autoPopup: boolean;
 }

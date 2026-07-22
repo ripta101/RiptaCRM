@@ -138,6 +138,25 @@ describe("GET /conversations/worklist", () => {
     const res = await request(app).get("/api/conversations/worklist").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(400);
   });
+
+  // Lets a client (see host's AgentStatusSelector) catch up on a chat that was assigned
+  // while its socket wasn't connected to receive the real-time "chat:assigned" event —
+  // the queue's autoPopup setting has to travel with the worklist item for that to work.
+  it("carries the assigned queue's autoPopup setting on each item", async () => {
+    const userId = `user-${randomUUID()}`;
+    const siteId = await setupSite();
+    const popupQueueId = await setupQueueWithMember(userId);
+    await request(app).patch(`/api/queues/${popupQueueId}`).set(SERVICE_KEY_HEADER).send({ autoPopup: true });
+    const quietQueueId = await setupQueueWithMember(userId);
+
+    const popupAssigned = await createConversation(siteId, popupQueueId, userId);
+    const quietAssigned = await createConversation(siteId, quietQueueId, userId);
+
+    const res = await request(app).get(`/api/conversations/worklist?userId=${userId}`).set(SERVICE_KEY_HEADER);
+    const byId = new Map(res.body.results.map((i: { id: string; autoPopup: boolean }) => [i.id, i.autoPopup]));
+    expect(byId.get(popupAssigned.id)).toBe(true);
+    expect(byId.get(quietAssigned.id)).toBe(false);
+  });
 });
 
 describe("POST /conversations/:id/claim", () => {

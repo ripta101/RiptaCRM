@@ -49,4 +49,8 @@ describe("caseToWorklistItem", () => {
   it("is never claimable — cases have no click-through worklist action", () => {
     expect(caseToWorklistItem(caseSummary()).claimable).toBe(false);
   });
+
+  it("is never autoPopup — screen-pop is a webchat-only concept", () => {
+    expect(caseToWorklistItem(caseSummary()).autoPopup).toBe(false);
+  });
 });
