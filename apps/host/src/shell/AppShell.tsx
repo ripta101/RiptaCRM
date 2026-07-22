@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Box, Toolbar } from "@mui/material";
 import { InteractionsProvider, useInteractions } from "../interactions/InteractionsContext";
 import { InteractionsRegion } from "../interactions/InteractionsRegion";
+import { AgentSocketProvider } from "../webchat/AgentSocketProvider";
 import { TopBar } from "./TopBar";
 import { SideMenu } from "./SideMenu";
 import { TabBar } from "./TabBar";
@@ -13,6 +14,7 @@ function AppShellContent() {
 
   return (
     <Box sx={{ display: "flex" }}>
+      <AgentSocketProvider />
       <TopBar onMenuClick={() => setMenuOpen(true)} />
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <Box component="main" sx={{ flexGrow: 1, minWidth: 0, width: "100%" }}>

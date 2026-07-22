@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Acme Rentals — Pricing</title>
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="brand">Acme Rentals</div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/pricing.html" class="active">Pricing</a>
+        <a href="/support.html">Support</a>
+        <a href="/react-embed-demo.html">React Embed Demo</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <h1>Simple, day-based pricing.</h1>
+      <table class="pricing-table">
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Price / day</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Basic Tools</td><td>$12</td></tr>
+          <tr><td>Power Tools</td><td>$25</td></tr>
+          <tr><td>Heavy Equipment</td><td>$85</td></tr>
+        </tbody>
+      </table>
+      <p>
+        This page's routing rule targets <code>/pricing.html</code> — chats started here get
+        a pricing-specific auto-reply and route to the same demo queue as the other pages.
+      </p>
+    </main>
+
+    <script src="http://localhost:5179/loader/loader.js" data-site-key="demo-site-key-please-change"></script>
+  </body>
+</html>

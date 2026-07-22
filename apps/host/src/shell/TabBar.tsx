@@ -6,7 +6,7 @@ export function TabBar() {
   const { tabs, activeTabId, setActiveTab, closeInteraction, requestClose } = useInteractions();
 
   function handleCloseClick(tab: (typeof tabs)[number]) {
-    if (tab.kind === "customer-lookup") {
+    if (tab.kind === "customer-lookup" || tab.kind === "webchat") {
       requestClose(tab.id);
     } else {
       closeInteraction(tab.id);

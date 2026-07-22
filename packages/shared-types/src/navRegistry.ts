@@ -31,6 +31,11 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { id: "customer-profile", label: "Customer Profile" },
   { id: "customer-amend", label: "Amend Customer" },
   { id: "customer-lodge-case", label: "Lodge a Case" },
+
+  // Feature-scoped grant for working WebChat conversations (claiming/opening chats,
+  // connecting to the agent WebSocket namespace) — distinct from webchat-config, which
+  // gates the admin configuration screens (sites, queues, routing rules, capacity).
+  { id: "webchat-agent", label: "Work WebChats" },
 ];
 
 // The one nav item the protected profile can never lose — otherwise an admin could lock

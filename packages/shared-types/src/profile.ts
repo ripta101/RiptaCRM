@@ -8,6 +8,10 @@ export interface Profile {
   isProtected: boolean;
   dashboardType: DashboardType;
   canStartInteractions: boolean;
+  // Default concurrent-WebChat-conversation cap for anyone holding this profile — only
+  // takes effect for a user also added as a WebChatQueueMember; overridable per-agent
+  // (see AgentCapacityOverride, owned by webchat-api).
+  maxConcurrentChats: number;
   navItemIds: string[];
   // Resolved subset of navItemIds that reference custom MenuItems (not the built-in
   // compile-time registry) — full objects, since the caller has no other way to know
@@ -23,6 +27,7 @@ export interface CreateProfileInput {
   name: string;
   dashboardType: DashboardType;
   canStartInteractions: boolean;
+  maxConcurrentChats?: number;
 }
 
 export type UpdateProfileInput = Partial<CreateProfileInput> & { navItemIds?: string[] };

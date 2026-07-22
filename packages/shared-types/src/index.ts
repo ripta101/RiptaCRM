@@ -8,3 +8,5 @@ export * from "./customer";
 export * from "./case";
 export * from "./broadcast";
 export * from "./queue";
+export * from "./webchat";
+export * from "./worklist";

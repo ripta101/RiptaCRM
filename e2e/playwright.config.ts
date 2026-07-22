@@ -48,6 +48,13 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      command: "pnpm --filter @riptacrm/webchat-api run test:e2e:serve",
+      cwd: "..",
+      url: "http://localhost:4315/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
       command: "pnpm --filter @riptacrm/message-broadcast run dev",
       cwd: "..",
       url: "http://localhost:5176",
@@ -72,6 +79,30 @@ export default defineConfig({
       command: "pnpm --filter @riptacrm/access-management run dev",
       cwd: "..",
       url: "http://localhost:5177",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: "pnpm --filter @riptacrm/webchat run dev",
+      cwd: "..",
+      url: "http://localhost:5178",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      // Not a plain `dev` — the widget has no single dev server; `serve` builds all three
+      // targets (loader/iframe/mfe) once and serves them together from one static root, so
+      // the sample site's real <script> embed and the React/MF embed demo both work as-is.
+      command: "pnpm --filter @riptacrm/webchat-widget run test:e2e:serve",
+      cwd: "..",
+      url: "http://localhost:5179/loader/loader.js",
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      command: "pnpm --filter @riptacrm/webchat-sample-site run dev",
+      cwd: "..",
+      url: "http://localhost:5180",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },

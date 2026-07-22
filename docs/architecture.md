@@ -10,6 +10,9 @@ graph LR
         CaseMFE["Case Management MFE<br/>:5175"]
         BroadcastMFE["Message Broadcast MFE<br/>:5176"]
         AccessMFE["Access Management MFE<br/>:5177"]
+        WebChatMFE["WebChat MFE<br/>:5178"]
+        WebChatWidget["WebChat Widget<br/>:5179<br/>loader.js / iframe / MF remote"]
+        SampleSite["WebChat sample site<br/>:5180"]
     end
 
     subgraph Backend["Backend APIs"]
@@ -18,6 +21,7 @@ graph LR
         AuthAPI["auth-api<br/>:4312<br/>Express + Prisma"]
         BroadcastAPI["message-broadcast-api<br/>:4313<br/>Express + Prisma"]
         AccessAPI["access-management-api<br/>:4314<br/>Express + Prisma"]
+        WebChatAPI["webchat-api<br/>:4315<br/>Express + Prisma + socket.io"]
     end
 
     subgraph Data["Databases"]
@@ -26,6 +30,7 @@ graph LR
         AuthDB[("auth-api<br/>SQLite")]
         BroadcastDB[("message-broadcast-api<br/>SQLite")]
         AccessDB[("access-management-api<br/>SQLite")]
+        WebChatDB[("webchat-api<br/>SQLite")]
     end
 
     subgraph Shared["Shared Packages"]
@@ -38,42 +43,53 @@ graph LR
     Host -. "loads remoteEntry.js" .-> CaseMFE
     Host -. "loads remoteEntry.js" .-> BroadcastMFE
     Host -. "loads remoteEntry.js" .-> AccessMFE
+    Host -. "loads remoteEntry.js (static)<br/>+ WebChatAgentModule (interaction tab)" .-> WebChatMFE
 
     CustomerMFE -- "HTTP REST" --> CustomerAPI
     CaseMFE -- "HTTP REST" --> CaseAPI
     BroadcastMFE -- "HTTP REST" --> BroadcastAPI
     AccessMFE -- "HTTP REST" --> AccessAPI
+    WebChatMFE -- "HTTP REST" --> WebChatAPI
     CustomerAPI -- "HTTP REST (server-to-server:<br/>reads fail soft, writes don't)" --> CaseAPI
     CaseAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> AuthAPI
     AccessAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> AuthAPI
     BroadcastAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> AccessAPI
     AuthAPI -- "HTTP REST (server-to-server,<br/>fails LOUD — see below)" --> AccessAPI
+    WebChatAPI -- "HTTP REST (server-to-server,<br/>fails CLOSED — see below)" --> AccessAPI
     Host -- "HTTP REST (direct,<br/>OpenCasesWidget only)" --> CaseAPI
     Host -- "HTTP REST (login)" --> AuthAPI
     Host -- "HTTP REST (direct,<br/>BroadcastPanelWidget only)" --> BroadcastAPI
+    Host -- "WebSocket (/agents namespace,<br/>screen-pop signal + live messages)" --> WebChatAPI
+    SampleSite -- "script embed (loader.js)" --> WebChatWidget
+    WebChatWidget -- "HTTP REST + WebSocket<br/>(/visitor namespace)" --> WebChatAPI
 
     CustomerAPI --> CustomerDB
     CaseAPI --> CaseDB
     AuthAPI --> AuthDB
     BroadcastAPI --> BroadcastDB
     AccessAPI --> AccessDB
+    WebChatAPI --> WebChatDB
 
     Types -.-> Host
     Types -.-> CustomerMFE
     Types -.-> CaseMFE
     Types -.-> BroadcastMFE
     Types -.-> AccessMFE
+    Types -.-> WebChatMFE
+    Types -.-> WebChatWidget
     Types -.-> CustomerAPI
     Types -.-> CaseAPI
     Types -.-> AuthAPI
     Types -.-> BroadcastAPI
     Types -.-> AccessAPI
+    Types -.-> WebChatAPI
     Auth -.-> Host
     UI -.-> Host
     UI -.-> CustomerMFE
     UI -.-> CaseMFE
     UI -.-> BroadcastMFE
     UI -.-> AccessMFE
+    UI -.-> WebChatMFE
 ```
 
 ## Nodes
@@ -85,19 +101,23 @@ graph LR
 | Case Management MFE | React + Vite, Module Federation **remote** (`caseManagement`) | 5175 | Case-type / workflow admin config UI + action log viewer |
 | Message Broadcast MFE | React + Vite, Module Federation **remote** (`messageBroadcast`) | 5176 | Admin composer + list UI for broadcast announcements |
 | Access Management MFE | React + Vite, Module Federation **remote** (`accessManagement`) | 5177 | Profile CRUD/archive, user↔profile assignment, custom Menu Item CRUD, and a read-only Users overview |
+| WebChat MFE | React + Vite, Module Federation **remote** (`webChat`) | 5178 | Admin config UI (Sites, Queues, Routing Rules, Capacity Overrides) + the agent-side live chat panel (`WebChatAgentModule`, loaded into a Host interaction tab) |
+| WebChat widget | React + Vite, **not one app** — 3 build targets served from one static root | 5179 | `/loader/loader.js` (vanilla-TS `<script>` embed, injects a bubble + iframe), `/iframe/` (the iframe's own SPA), `/mfe/remoteEntry.js` (Module Federation remote `webChatWidget`, loaded dynamically like a custom Menu Item, not via Host's static remotes map) |
+| WebChat sample site | Static multi-page site (Vite, no MF except one demo page) | 5180 | Home / Pricing / Support pages embedding the widget via `<script>`, plus a React page dynamically loading the MF embed — demonstrates both embed paths against real, distinct page paths for routing rules to match against |
 | customer-api | Express + Prisma + SQLite | 4310 | Customer & interaction-history REST API |
 | case-management-api | Express + Prisma + SQLite + node-cron | 4311 | Case type / workflow / instance / SLA REST API + SLA scheduler |
 | auth-api | Express + Prisma + SQLite | 4312 | Login / JWT issuance REST API — bcrypt-hashed passwords; resolves the logged-in user's Profile(s) from access-management-api on every login (see below); also a minimal `GET /api/users` read endpoint (auth-required) used by case-management-api's and access-management-api's member pickers |
 | message-broadcast-api | Express + Prisma + SQLite | 4313 | Broadcast announcement CRUD + profile/validity-filtered active-list REST API |
 | access-management-api | Express + Prisma + SQLite | 4314 | Profile CRUD/archive + user↔profile membership REST API — the source of truth for what every session's Profile grants |
+| webchat-api | Express + Prisma + SQLite + socket.io | 4315 | Site/Queue/RoutingRule/CapacityOverride admin CRUD, conversation assign/claim/message REST API, a public unauthenticated `/api/public/*` router for the widget, and a `socket.io` server (`/visitor` + `/agents` namespaces) for real-time delivery |
 
 ## Shared packages
 
 | Package | Contains | Consumed by |
 |---|---|---|
-| `@riptacrm/shared-types` | Cross-cutting TS types/DTOs (customer, case, interaction, nav, nav registry, user, profile, broadcast) | All 10 services |
-| `@riptacrm/auth-client` | Auth context + JWT-backed API auth provider (`useAuth()`) | Host only |
-| `@riptacrm/ui` | Shared MUI theme | Host, Customer MFE, Case Management MFE, Message Broadcast MFE, Access Management MFE |
+| `@riptacrm/shared-types` | Cross-cutting TS types/DTOs (customer, case, interaction, nav, nav registry, user, profile, broadcast, webchat, worklist) | All services, including the WebChat widget (but see below) |
+| `@riptacrm/auth-client` | Auth context + JWT-backed API auth provider (`useAuth()`) | Host only — deliberately **not** the WebChat widget, which has no logged-in session of its own to provide (see below) |
+| `@riptacrm/ui` | Shared MUI theme, dynamic form renderer, `formatDateTime`/`formatDateOnly` | Host, Customer MFE, Case Management MFE, Message Broadcast MFE, Access Management MFE, WebChat MFE |
 
 ## The asymmetric edges
 
@@ -150,6 +170,27 @@ The Customer MFE's 5 feature grants from "Profiles" above (`customer-search`, `c
 
 Every MFE now threads an `authToken` prop from the Host's `useAuth()` session down through its exposed module to every API call (`apps/*/src/api/client.ts`'s shared `request()` helper takes an optional trailing `token`). The Customer MFE additionally threads `grantedFeatureIds?: string[]` (sourced from the session's `navItemIds` — no separate claim needed, since the 5 feature ids already live in that same array) down to `CustomerLookupModule` → `InteractionWorkspace`/`CustomerMenuBox`/`LodgeCaseForm`; `undefined` defaults to all 5 granted, so the MFE's standalone dev harness (`StandaloneApp.tsx`) still works without wiring up a fake grant list. `DynamicRemote.tsx` (see "Custom Menu Items" above) passes both `session` and `authToken={session.token}` to whatever it dynamically loads, since a remote built against either prop contract needs to keep working — a custom menu item's grant only controls whether the shell loads that remote at all, not what its own backend's `requirePermission` calls still require (e.g. a frontline user granted a dynamically-loaded Case Management menu item still needs `case-management-config` from their Profile to see any of its data, same as the statically-wired page).
 
+## WebChat: the first public, unauthenticated endpoints
+
+Every route documented under "Authorization" above requires either an end-user JWT or the service-to-service key — until `webchat-api`'s `/api/public/*` router. A visitor on a customer's website has no account and no login flow at all, so `requirePermission()` genuinely cannot apply there; these three routes (`POST /conversations`, `POST /conversations/:id/messages`, `GET /conversations/:id`) carry **no** auth middleware whatsoever, mounted before (and with different CORS handling than) the rest of the API in `app.ts`.
+
+The trust model is narrower, not absent:
+- **`siteKey`** — a per-`Site` value embedded directly in the widget's loader script or MF module props. Not secret (it's shipped to every visitor's browser by design, same posture as, say, a Stripe publishable key), but every public route validates it resolves to a real, active `Site` before doing anything else.
+- **Dynamic CORS, not a static allowlist** — `lib/originValidator.ts`'s `publicCors(req, callback)` looks up the `Site` by the request's `siteKey` and only allows the request's `Origin` if it's empty (`allowedOrigins` unset → accept any, the default for a fresh Site) or an exact match against that Site's configured comma-separated list. This has to be a per-request lookup, not a fixed origin list like every other backend's `cors({ origin: adminOrigins })`, because a public endpoint doesn't know in advance which of N different customer domains might legitimately embed which Site.
+- **Rate limiting** (`express-rate-limit`), keyed by `siteKey` (falling back to IP) — 60/min for starting a conversation, 120/min for sending a message — the only rate-limited routes in the codebase, because these are the only ones reachable by an anonymous, unauthenticated caller at all.
+
+None of this weakens `requirePermission()` anywhere else — it's a narrow, deliberate carve-out for the one surface in the app that structurally cannot have a session, not a precedent for skipping auth elsewhere.
+
+## WebChat: real-time via socket.io, writes stay REST
+
+Unlike Message Broadcast's interval polling (below), WebChat needs genuine low-latency, two-way delivery — a visitor typing on an arbitrary third-party network and an agent expecting a near-instant screen-pop don't tolerate a 45-second poll window. `webchat-api` runs one `socket.io` `Server` attached to the same `http.Server` Express already listens on (`src/ws/socketServer.ts`'s `attachSocketServer()`, stored on `app.locals.io`), split into two **namespaces** — `/visitor` (handshake `{siteKey, conversationId}`, joins `conversation:<id>`) and `/agents` (handshake `{token}`, verified the same way `requirePermission` verifies a JWT, requires `webchat-agent` or `webchat-config`, joins `agent:<userId>` and, per-open-tab, `conversation:<id>`).
+
+**Every write still goes through an ordinary REST call** — starting a conversation, sending a message, assigning, claiming. A route handler commits the Prisma write first, then emits a socket event to the relevant room(s) once it's durable. Sockets are broadcast-only; they never carry a mutation. This keeps exactly one code path to test with supertest (`createApp()` has no live socket server attached, and every emit call is written to no-op safely when `app.locals.io` is `undefined`), independent of whether a real socket server is running.
+
+**A namespace's rooms are private to that namespace** — `io.to("someRoom")` (bare, no `.of(...)`) operates on the default `"/"` namespace, which nothing in this app ever connects to, so it silently emits to nobody. Since a conversation has members in *both* `/visitor` and `/agents` (each joins a same-named `conversation:<id>` room, but in their own namespace's separate room registry), broadcasting a conversation event needs to explicitly target both — see `emitToConversationRoom()`/`emitToAgent()` in `socketServer.ts`, the only correct way to emit from a route handler. This was a real bug caught by this feature's own e2e spec: every emit initially used the bare form, so `chat:assigned` and `message:new` were computed and "sent" correctly but delivered to an empty namespace and silently dropped — the fix is now the only emit path used anywhere in this service.
+
+**Capacity resolution fails closed, not soft**: `services/routeConversation.ts`'s `resolveEffectiveCapacity(userId)` checks a local `AgentCapacityOverride` first (no network call), else calls `access-management-api`'s `GET /api/profiles/default-webchat-capacity?userId=...`. If that call fails, effective capacity is `0` — the conversation stays queued rather than risking a silent over-assignment to an agent whose real capacity couldn't be confirmed. This is the opposite default from every other cross-service read in this codebase (which fails soft to an empty/degraded result); a live customer conversation being delayed is a much smaller problem than one being silently dropped onto an already-overloaded agent.
+
 ## Message Broadcast: interval polling, not long-polling or WebSockets
 
 `BroadcastPanelWidget` re-fetches `GET /api/broadcasts/active?profileId=...` on a 45-second `setInterval`, not via long-polling or a WebSocket — this is the first (and so far only) auto-refreshing UI in the codebase. Interval polling was chosen deliberately: every other piece of client-server communication in this app is a one-shot REST call, so a plain timer keeps the same mental model, and because each tick is a fresh, stateless request, there's no open-connection state to track or recover if it drops — unlike long-polling, which needs its own "resume polling if nothing came back for a while" logic. `/active` still requires *some* valid session (any authenticated user, no specific Profile grant) — see "Authorization" below — so it's an authenticated poll, not a public subscription. Broadcast targeting (`MessageBroadcastTargetProfile.profileId`) is, like `ProfileUser.userId`, a plain unvalidated string — creating/updating a broadcast never cross-checks `targetProfileIds` against `access-management-api`, so a degraded "target profiles" picker can never cause a valid broadcast to be rejected.
@@ -157,3 +198,5 @@ Every MFE now threads an `authToken` prop from the Host's `useAuth()` session do
 ## Queues: auto-assign or route, decided server-side at lodge time
 
 A `Queue` (`case-management-api`) is just a name plus a list of member user ids (plain strings, unvalidated — `case-management-api` has no `User` model of its own; membership is checked, never joined, against `auth-api`'s data). A `StageDefinition` can optionally have a `queueId`. When the Customer module's "Lodge a Case" form calls `POST /api/case-instances` with a `lodgedByUserId` (the logged-in frontline user's id, threaded in from the Host — the Customer MFE has no `@riptacrm/auth-client` dependency of its own, matching every other MFE), `case-management-api` looks at the new case's starting stage: no queue on the stage → unchanged, unassigned; queue present and the lodging user is a member → auto-assigned to them; queue present and they're not a member → the case's `assignedQueueId` is set instead of `assignedToUserId`, and the response carries the queue's name back so the UI can tell the user their case was routed rather than claimed. An explicit `assignedToUserId` in the request (the only way the admin's "Create Test Case Instance" screen has ever populated assignment) always wins over this logic and skips it entirely — `lodgedByUserId` is a new, separate field that only the Lodge-a-Case flow sends.
+
+`webchat-api` owns its own `WebChatQueue`/`WebChatQueueMember` tables, structurally identical to `case-management-api`'s `Queue`/`QueueMember` — a deliberate **duplicate**, not a reuse. Every other cross-service data need in this codebase goes through a server-to-server proxy call; queues specifically don't, because WebChat's routing has to run synchronously, in the hot path of assigning a just-arrived live conversation, and a hard runtime dependency on another service being up would mean a `case-management-api` outage could also break WebChat intake. The accepted cost: an agent who works both cases and chats needs two separate queue-membership rows (one in each service), added by two different admin screens.

@@ -13,7 +13,9 @@ afterEach(async () => {
   await prisma.profile.deleteMany({ where: { id: { in: createdProfileIds.splice(0) } } });
 });
 
-async function createProfile(overrides: Partial<{ name: string; dashboardType: string; canStartInteractions: boolean }> = {}) {
+async function createProfile(
+  overrides: Partial<{ name: string; dashboardType: string; canStartInteractions: boolean; maxConcurrentChats: number }> = {},
+) {
   const res = await request(app)
     .post("/api/profiles").set(SERVICE_KEY_HEADER)
     .send({ name: `Profile ${randomUUID()}`, dashboardType: "frontline", canStartInteractions: false, ...overrides });
@@ -221,5 +223,81 @@ describe("GET /users proxy", () => {
     const res = await request(app).get("/api/users").set(SERVICE_KEY_HEADER);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.results)).toBe(true);
+  });
+});
+
+describe("maxConcurrentChats", () => {
+  it("defaults to 3 when omitted on create", async () => {
+    const created = await createProfile();
+    expect(created.body.maxConcurrentChats).toBe(3);
+  });
+
+  it("accepts an explicit value on create and update", async () => {
+    const created = await createProfile({ maxConcurrentChats: 7 });
+    expect(created.body.maxConcurrentChats).toBe(7);
+
+    const updated = await request(app)
+      .patch(`/api/profiles/${created.body.id}`)
+      .set(SERVICE_KEY_HEADER)
+      .send({ maxConcurrentChats: 10 });
+    expect(updated.status).toBe(200);
+    expect(updated.body.maxConcurrentChats).toBe(10);
+  });
+
+  it("rejects a negative or non-integer value", async () => {
+    const negative = await request(app)
+      .post("/api/profiles")
+      .set(SERVICE_KEY_HEADER)
+      .send({ name: `X ${randomUUID()}`, dashboardType: "frontline", maxConcurrentChats: -1 });
+    expect(negative.status).toBe(400);
+
+    const fractional = await request(app)
+      .post("/api/profiles")
+      .set(SERVICE_KEY_HEADER)
+      .send({ name: `X ${randomUUID()}`, dashboardType: "frontline", maxConcurrentChats: 2.5 });
+    expect(fractional.status).toBe(400);
+  });
+});
+
+describe("GET /profiles/default-webchat-capacity", () => {
+  it("returns the max maxConcurrentChats across the user's non-archived profiles", async () => {
+    const userId = `user-${randomUUID()}`;
+    const low = await createProfile({ maxConcurrentChats: 2 });
+    const high = await createProfile({ maxConcurrentChats: 6 });
+    await request(app).post(`/api/profiles/${low.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId });
+    await request(app).post(`/api/profiles/${high.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId });
+
+    const res = await request(app)
+      .get(`/api/profiles/default-webchat-capacity?userId=${userId}`)
+      .set(SERVICE_KEY_HEADER);
+    expect(res.status).toBe(200);
+    expect(res.body.maxConcurrentChats).toBe(6);
+  });
+
+  it("ignores archived profiles", async () => {
+    // The /archive route itself refuses to archive a profile with members (unassign first),
+    // so an archived-but-still-a-member state can't arise through normal API usage — write
+    // it directly to isolate the aggregation query's own archivedAt filter.
+    const userId = `user-${randomUUID()}`;
+    const profile = await createProfile({ maxConcurrentChats: 9 });
+    await request(app).post(`/api/profiles/${profile.body.id}/members`).set(SERVICE_KEY_HEADER).send({ userId });
+    await prisma.profile.update({ where: { id: profile.body.id }, data: { archivedAt: new Date() } });
+
+    const res = await request(app)
+      .get(`/api/profiles/default-webchat-capacity?userId=${userId}`)
+      .set(SERVICE_KEY_HEADER);
+    expect(res.body.maxConcurrentChats).toBeNull();
+  });
+
+  it("returns null for a user with no profiles", async () => {
+    const res = await request(app)
+      .get(`/api/profiles/default-webchat-capacity?userId=user-${randomUUID()}`)
+      .set(SERVICE_KEY_HEADER);
+    expect(res.body.maxConcurrentChats).toBeNull();
+  });
+
+  it("requires a userId query parameter", async () => {
+    const res = await request(app).get("/api/profiles/default-webchat-capacity").set(SERVICE_KEY_HEADER);
+    expect(res.status).toBe(400);
   });
 });

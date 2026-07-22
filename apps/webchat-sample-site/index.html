@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Acme Rentals — Home</title>
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="brand">Acme Rentals</div>
+      <nav>
+        <a href="/" class="active">Home</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/support.html">Support</a>
+        <a href="/react-embed-demo.html">React Embed Demo</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <h1>Tools rented by the day, delivered to your door.</h1>
+      <p>
+        Acme Rentals is a sample customer website — this page exists purely to demonstrate
+        RiptaCRM's WebChat widget embedded via the <code>&lt;script&gt;</code> loader. Click
+        the chat bubble in the bottom-right corner to start a conversation.
+      </p>
+      <p>
+        This page's routing rule (seeded in <code>webchat-api</code>'s demo data) targets
+        <code>/</code> — messages started here route to the General Support queue with a
+        homepage-specific auto-reply.
+      </p>
+    </main>
+
+    <script src="http://localhost:5179/loader/loader.js" data-site-key="demo-site-key-please-change"></script>
+  </body>
+</html>

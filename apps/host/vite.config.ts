@@ -39,6 +39,13 @@ export default defineConfig({
           entryGlobalName: "accessManagement",
           shareScope: "default",
         },
+        webChat: {
+          type: "module",
+          name: "webChat",
+          entry: "http://localhost:5178/remoteEntry.js",
+          entryGlobalName: "webChat",
+          shareScope: "default",
+        },
       },
       shared: {
         react: { singleton: true, requiredVersion: false },

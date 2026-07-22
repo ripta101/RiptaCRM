@@ -22,6 +22,25 @@ profilesRouter.get("/profiles", requirePermission("access-management-config"), a
   res.json({ results: await Promise.all(profiles.map(toProfile)) });
 });
 
+// Called by webchat-api to resolve an agent's default concurrent-chat capacity when they
+// have no per-agent AgentCapacityOverride. A user can hold multiple non-archived profiles —
+// take the most permissive (max), since a backend has no way to know which one is "active"
+// for a given routing decision the way a live session would.
+profilesRouter.get("/profiles/default-webchat-capacity", requirePermission(), async (req, res) => {
+  const userId = typeof req.query.userId === "string" ? req.query.userId.trim() : "";
+  if (!userId) {
+    return res.status(400).json({ error: "userId query parameter is required." });
+  }
+
+  const profiles = await prisma.profile.findMany({
+    where: { archivedAt: null, members: { some: { userId } } },
+    select: { maxConcurrentChats: true },
+  });
+
+  const maxConcurrentChats = profiles.length > 0 ? Math.max(...profiles.map((p) => p.maxConcurrentChats)) : null;
+  res.json({ maxConcurrentChats });
+});
+
 profilesRouter.post("/profiles", requirePermission("access-management-config"), async (req, res) => {
   const body = req.body as Partial<CreateProfileInput>;
   if (!body.name?.trim()) {
@@ -30,6 +49,9 @@ profilesRouter.post("/profiles", requirePermission("access-management-config"), 
   if (!body.dashboardType || !VALID_DASHBOARD_TYPES.includes(body.dashboardType)) {
     return res.status(400).json({ error: `dashboardType must be one of ${VALID_DASHBOARD_TYPES.join(", ")}.` });
   }
+  if (body.maxConcurrentChats !== undefined && (!Number.isInteger(body.maxConcurrentChats) || body.maxConcurrentChats < 0)) {
+    return res.status(400).json({ error: "maxConcurrentChats must be a non-negative integer." });
+  }
 
   try {
     const profile = await prisma.profile.create({
@@ -37,6 +59,7 @@ profilesRouter.post("/profiles", requirePermission("access-management-config"), 
         name: body.name.trim(),
         dashboardType: body.dashboardType,
         canStartInteractions: body.canStartInteractions ?? false,
+        maxConcurrentChats: body.maxConcurrentChats,
       },
       include: WITH_RELATIONS,
     });
@@ -66,6 +89,9 @@ profilesRouter.patch("/profiles/:id", requirePermission("access-management-confi
   if (body.dashboardType !== undefined && !VALID_DASHBOARD_TYPES.includes(body.dashboardType)) {
     return res.status(400).json({ error: `dashboardType must be one of ${VALID_DASHBOARD_TYPES.join(", ")}.` });
   }
+  if (body.maxConcurrentChats !== undefined && (!Number.isInteger(body.maxConcurrentChats) || body.maxConcurrentChats < 0)) {
+    return res.status(400).json({ error: "maxConcurrentChats must be a non-negative integer." });
+  }
   if (body.navItemIds !== undefined) {
     if (!Array.isArray(body.navItemIds)) {
       return res.status(400).json({ error: "navItemIds must be an array." });
@@ -91,6 +117,7 @@ profilesRouter.patch("/profiles/:id", requirePermission("access-management-confi
           name: body.name?.trim(),
           dashboardType: body.dashboardType,
           canStartInteractions: body.canStartInteractions,
+          maxConcurrentChats: body.maxConcurrentChats,
         },
         include: WITH_RELATIONS,
       });

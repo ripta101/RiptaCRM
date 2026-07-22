@@ -51,6 +51,7 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
   const [name, setName] = useState("");
   const [dashboardType, setDashboardType] = useState<DashboardType>("frontline");
   const [canStartInteractions, setCanStartInteractions] = useState(false);
+  const [maxConcurrentChats, setMaxConcurrentChats] = useState(3);
   const [saving, setSaving] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
@@ -70,6 +71,7 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
           setName(p.name);
           setDashboardType(p.dashboardType);
           setCanStartInteractions(p.canStartInteractions);
+          setMaxConcurrentChats(p.maxConcurrentChats);
         }),
       )
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load profile."))
@@ -84,7 +86,7 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
     try {
       const updated = await updateProfile(
         profileId,
-        { name: name.trim(), dashboardType, canStartInteractions },
+        { name: name.trim(), dashboardType, canStartInteractions, maxConcurrentChats },
         authToken,
       );
       setProfile(updated);
@@ -208,13 +210,25 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
             }
             label="Can start customer interactions"
           />
+          <TextField
+            label="Max concurrent chats"
+            type="number"
+            size="small"
+            value={maxConcurrentChats}
+            onChange={(e) => setMaxConcurrentChats(Math.max(0, parseInt(e.target.value, 10) || 0))}
+            slotProps={{ htmlInput: { min: 0 } }}
+            helperText="Default WebChat capacity for anyone holding this profile — overridable per agent."
+          />
           <Box>
             <Button
               variant="contained"
               disabled={
                 !name.trim() ||
                 saving ||
-                (name === profile.name && dashboardType === profile.dashboardType && canStartInteractions === profile.canStartInteractions)
+                (name === profile.name &&
+                  dashboardType === profile.dashboardType &&
+                  canStartInteractions === profile.canStartInteractions &&
+                  maxConcurrentChats === profile.maxConcurrentChats)
               }
               onClick={handleSaveDetails}
             >

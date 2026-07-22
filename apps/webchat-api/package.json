@@ -1,0 +1,50 @@
+{
+  "name": "@riptacrm/webchat-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsc --noEmit && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"no lint configured\"",
+    "prisma:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "test:db:reset": "rimraf prisma/test.db prisma/test.db-journal && dotenv -e .env.test -- prisma migrate deploy",
+    "test": "pnpm run test:db:reset && dotenv -e .env.test -- vitest run",
+    "test:watch": "dotenv -e .env.test -- vitest",
+    "test:e2e:reset-db": "rimraf prisma/e2e.db prisma/e2e.db-journal && dotenv -e .env.e2e -- prisma migrate deploy && dotenv -e .env.e2e -- prisma db seed",
+    "test:e2e:serve": "tsx watch --env-file=.env.e2e src/index.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "@riptacrm/shared-types": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.9.0",
+    "@types/supertest": "^6.0.2",
+    "dotenv-cli": "^7.4.4",
+    "prisma": "^5.20.0",
+    "rimraf": "^6.0.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,99 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+model Site {
+  id             String   @id @default(uuid())
+  name           String
+  siteKey        String   @unique // public, embedded in the loader script — not secret
+  allowedOrigins String? // comma-separated; empty/null = accept any origin
+  defaultQueueId String?
+  defaultQueue   WebChatQueue? @relation(fields: [defaultQueueId], references: [id], onDelete: SetNull)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  rules         RoutingRule[]
+  conversations Conversation[]
+}
+
+model WebChatQueue {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  autoPopup Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members         WebChatQueueMember[]
+  rules           RoutingRule[]
+  conversations   Conversation[] @relation("AssignedQueue")
+  defaultForSites Site[]
+}
+
+model WebChatQueueMember {
+  id        String       @id @default(uuid())
+  queueId   String
+  queue     WebChatQueue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  userId    String // plain, unvalidated — mirrors case-management-api's QueueMember.userId
+  createdAt DateTime     @default(now())
+
+  @@unique([queueId, userId])
+}
+
+model AgentCapacityOverride {
+  id                 String   @id @default(uuid())
+  userId             String   @unique // plain, unvalidated
+  maxConcurrentChats Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model RoutingRule {
+  id            String       @id @default(uuid())
+  siteId        String
+  site          Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  pattern       String // e.g. "/pricing" or "/support"
+  matchType     String       @default("PREFIX") // "EXACT" | "PREFIX"
+  priority      Int          @default(0) // lower = evaluated first
+  autoReplyText String
+  targetQueueId String
+  targetQueue   WebChatQueue @relation(fields: [targetQueueId], references: [id])
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Conversation {
+  id                String    @id @default(uuid())
+  siteId            String
+  site              Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  customerAccountId String? // nullable forward-compat seam — always null today, no customer login yet
+  pageUrlPath       String
+  pageUrlFull       String?
+  status            String    @default("OPEN") // "OPEN" | "CLOSED"
+  assignedToUserId  String?
+  assignedQueueId   String?
+  assignedQueue     WebChatQueue? @relation("AssignedQueue", fields: [assignedQueueId], references: [id], onDelete: SetNull)
+  matchedRuleId     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  closedAt          DateTime?
+
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderType     String // "VISITOR" | "AGENT" | "SYSTEM"
+  senderUserId   String?
+  body           String
+  createdAt      DateTime     @default(now())
+}

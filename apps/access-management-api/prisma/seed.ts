@@ -46,6 +46,7 @@ async function main() {
           "customer-profile",
           "customer-amend",
           "customer-lodge-case",
+          "webchat-agent",
         ].map((navItemId) => ({ navItemId })),
       },
       members: { create: FRONTLINE_USER_IDS.map((userId) => ({ userId })) },

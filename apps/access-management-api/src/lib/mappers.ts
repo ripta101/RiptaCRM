@@ -45,6 +45,7 @@ export async function toProfile(p: ProfileWithRelations): Promise<Profile> {
     isProtected: p.isProtected,
     dashboardType: p.dashboardType as DashboardType,
     canStartInteractions: p.canStartInteractions,
+    maxConcurrentChats: p.maxConcurrentChats,
     navItemIds,
     customMenuItems,
     memberUserIds: p.members.map((m) => m.userId),

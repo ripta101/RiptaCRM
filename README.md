@@ -12,8 +12,8 @@ The application frame everything else runs inside. Every user's access is driven
 - A profile with the frontline-style dashboard gets case widgets and (if its "can start interactions" capability is on) a way to start customer interactions (persistent tabs — switching tabs doesn't lose your place), split into "Dashboard" and "Worklist" tabs
 - A profile with the admin-style dashboard gets a Dashboard showing recent configuration changes instead
 - Routes are guarded per nav item — each menu's page is only reachable if the active profile grants that specific nav item
-- The Dashboard's "Worklist" tab lists the logged-in user's own assigned open cases (case type, stage, customer account, SLA due, breach status) — read-only for now, no click-through to the customer interaction yet
-- `IT Support`, `Settings`, `Profile`, and the WebChat / Email configuration pages are placeholder "coming soon" screens for now
+- The Dashboard's "Worklist" tab is a generic list, not just cases: it merges the logged-in user's own assigned open cases (case type, stage, customer account, SLA due, breach status — read-only, no click-through yet) with, for anyone granted `webchat-agent`, their assigned WebChat conversations plus any unclaimed conversation in a queue they belong to (with a "Claim" action)
+- `IT Support`, `Settings`, `Profile`, and the Email configuration page are placeholder "coming soon" screens for now; WebChat's config page is real (see the WebChat module below)
 - The "Open Cases" widget shows a live count of cases assigned to the logged-in user, sourced from the Case Management module
 - Every Dashboard shows an "Announcements" panel on the right, sourced from the Message Broadcast module (filtered to the active profile) and auto-refreshing
 
@@ -64,6 +64,20 @@ Lets a business admin push announcements to logged-in users.
 - Displays on the right-hand side of every logged-in user's Dashboard, filtered to their active session's Profile, and auto-refreshes every 45 seconds via polling — no page reload needed to see a new announcement or have an expired one disappear
 - Admins can edit a broadcast or cancel it early from the admin list; a message stops displaying the moment its validity window ends or it's canceled
 
+### WebChat
+Lets a customer website embed live chat, routes inbound conversations to agents, and lets agents work them either as a screen-popped interaction or a claimed Worklist item.
+- **Two embed mechanisms** on any customer site: a `<script src="…/loader.js" data-site-key="…">` tag (injects a floating bubble backed by a hidden iframe — works on any site regardless of stack) or a Module Federation remote (`webChatWidget/WebChatWidgetModule`), loaded dynamically the same way Access Management's custom MFE menu items are
+- **Path-based routing**: an admin defines Routing Rules per Site (`EXACT` or `PREFIX` match against the visitor's page path, e.g. `/support.html`), each pointing at a target Queue and carrying its own one-shot auto-reply text sent as a system message the moment a conversation starts. No match falls back to the Site's default queue
+- **Capacity-aware auto-assignment**: a new conversation is routed to the least-loaded eligible member of the matched queue — eligibility and load are checked against each agent's effective `maxConcurrentChats` (a Profile-level default, overridable per-agent) — and left unassigned (queued) if nobody has spare capacity
+- **Self-claim**: agents can also claim an unassigned conversation themselves from their Worklist, not just wait for an admin hand-off — race-safe (a losing concurrent claim gets a 409, not a silent double-assignment)
+- **Auto-popup vs. Worklist-only** is a per-Queue toggle: queues with it on screen-pop a new "Web Chat" interaction tab to the assigned agent in real time (via a WebSocket); queues with it off just add the chat to the agent's Worklist for them to open when ready
+- Real-time delivery (both directions — visitor and agent) is a genuine WebSocket connection (`socket.io`), not polling; starting a chat, sending a message, assigning, and claiming all still go through ordinary REST calls that emit a socket event once the write commits
+- Chat continuity across a page reload/re-visit is a browser-stored (`localStorage`) conversation id — no customer login exists yet, but conversations carry a nullable `customerAccountId` seam for one to be wired in later
+- Admin config MFE covers Sites (siteKey + embed snippet, regenerate key), Queues (members + auto-popup + capacity overrides), and Routing Rules (per site)
+- A realistic multi-page sample site (`apps/webchat-sample-site` — Home / Pricing / Support / a React+MF embed demo page) demonstrates both embed paths end-to-end
+- WebChat owns its **own** Queue/QueueMember-shaped tables — a deliberate duplicate of Case Management's Queues, not a reuse, so live chat routing has no runtime dependency on another module's database
+- The public, visitor-facing endpoints (`webchat-api`'s `/api/public/*`) are the app's first genuinely unauthenticated surface — a visitor has no session at all. Trust is a per-Site `siteKey` (not secret) plus a dynamic CORS origin check and rate limiting, not `requirePermission()`. See "WebChat: the first public, unauthenticated endpoints" in `docs/architecture.md`
+
 `packages/` holds code shared across modules (UI theme, shared types, auth) — not a module in its own right.
 
 See [docs/architecture.md](docs/architecture.md) for a diagram of how the modules connect (Module Federation wiring, REST calls between services, ports).
@@ -77,6 +91,7 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
 - node-cron for the Case Management module's SLA scheduler
 - @xyflow/react for the Case Management module's stage-transition flow diagram; @dnd-kit for drag-and-drop stage reordering
 - TipTap for the Message Broadcast composer's rich text editing; emoji-picker-react for its emoji picker; sanitize-html to strip unsafe HTML from broadcast messages before they're stored
+- socket.io + socket.io-client for WebChat's real-time visitor/agent messaging; express-rate-limit to throttle its public, unauthenticated endpoints
 - Turborepo + pnpm workspaces
 
 ## Prerequisites (one-time setup)
@@ -116,7 +131,13 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
    pnpm --filter @riptacrm/message-broadcast-api db:migrate
    ```
    Applies the migration and seeds a few sample announcements (active, scheduled, expired, and canceled) so the Dashboard panel and admin list have something to show right away.
-8. (Optional) `cp apps/host/.env.example apps/host/.env` — only needed if you want to point the Host at a non-default Auth API or Message Broadcast API URL.
+8. Set up the WebChat module's database:
+   ```
+   cp apps/webchat-api/.env.example apps/webchat-api/.env
+   pnpm --filter @riptacrm/webchat-api db:migrate
+   ```
+   Applies the migration and seeds a demo Site (fixed `siteKey`, embedded directly in `apps/webchat-sample-site`'s pages), a "General Support" queue with `autoPopup` on, and three routing rules targeting the sample site's Home/Pricing/Support pages.
+9. (Optional) `cp apps/host/.env.example apps/host/.env` — only needed if you want to point the Host at a non-default Auth API or Message Broadcast API URL.
 
 ## Starting the Application
 
@@ -124,7 +145,7 @@ From the project root:
 ```
 pnpm dev
 ```
-This starts all ten services together:
+This starts all services together:
 - Host — http://localhost:5173
 - Customer module — http://localhost:5174
 - Customer API — http://localhost:4310
@@ -135,8 +156,12 @@ This starts all ten services together:
 - Message Broadcast API — http://localhost:4313
 - Access Management module — http://localhost:5177
 - Access Management API — http://localhost:4314
+- WebChat admin config module — http://localhost:5178
+- WebChat API — http://localhost:4315
+- WebChat widget — http://localhost:5179 (not a single "app": serves three build artifacts — `/loader/loader.js`, `/iframe/`, `/mfe/remoteEntry.js` — from one static server)
+- WebChat sample customer site — http://localhost:5180
 
-The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel; the Host calls the Auth API to log in; the Auth API calls the Access Management API server-to-server on every login to resolve the user's Profile(s) (and fails the login loudly, not softly, if that call fails); the Host calls the Message Broadcast API to show and poll the Dashboard's Announcements panel; and the Message Broadcast API calls the Access Management API to populate its composer's "target profiles" picker — start them all (`pnpm dev` does this automatically) for the full app to work.
+The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel; the Host calls the Auth API to log in; the Auth API calls the Access Management API server-to-server on every login to resolve the user's Profile(s) (and fails the login loudly, not softly, if that call fails); the Host calls the Message Broadcast API to show and poll the Dashboard's Announcements panel; the Message Broadcast API calls the Access Management API to populate its composer's "target profiles" picker; the WebChat API calls the Access Management API server-to-server to resolve an agent's default chat capacity, failing closed (capacity `0`, chat stays queued) if that call fails; and the WebChat sample site's embedded widget (loaded from the WebChat widget's static server) talks to the WebChat API over both REST and WebSocket — start them all (`pnpm dev` does this automatically) for the full app to work.
 
 Open http://localhost:5173 and log in with one of:
 - `test` / `Passw0rd154@` — Frontline User profile
@@ -146,7 +171,7 @@ Open http://localhost:5173 and log in with one of:
 
 ## Changing the Database Schema
 
-The Customer, Case Management, Auth, Message Broadcast, and Access Management modules' databases all use [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in each app's `prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command (substitute the package name for whichever module you're working on), on any machine:
+The Customer, Case Management, Auth, Message Broadcast, Access Management, and WebChat modules' databases all use [Prisma Migrate](https://www.prisma.io/docs/orm/prisma-migrate) — every schema change is a versioned, timestamped SQL file in each app's `prisma/migrations/`, committed to git. Each database tracks which migrations it has already applied, so "catching up" is always the same command (substitute the package name for whichever module you're working on), on any machine:
 
 - **You pulled code that includes new migrations** (someone else changed the schema): run
   ```
@@ -155,6 +180,7 @@ The Customer, Case Management, Auth, Message Broadcast, and Access Management mo
   pnpm --filter @riptacrm/access-management-api db:migrate
   pnpm --filter @riptacrm/auth-api db:migrate
   pnpm --filter @riptacrm/message-broadcast-api db:migrate
+  pnpm --filter @riptacrm/webchat-api db:migrate
   ```
   This applies only the migrations your local database doesn't have yet.
 - **You're changing the schema yourself**: edit the app's `prisma/schema.prisma`, then run the same `db:migrate` command. Prisma detects the change, generates a new migration file, and applies it locally. Commit the new `prisma/migrations/<timestamp>_<name>/` folder along with your code change so everyone else picks it up next time they run `db:migrate`.
@@ -165,6 +191,6 @@ The Customer, Case Management, Auth, Message Broadcast, and Access Management mo
 
 ## Stopping the Application
 
-Press `Ctrl+C` in the terminal running `pnpm dev` — this stops all ten services together.
+Press `Ctrl+C` in the terminal running `pnpm dev` — this stops all services together.
 
 If you started any service in its own separate terminal (e.g. `pnpm --filter @riptacrm/host dev`), press `Ctrl+C` in each of those terminals individually.

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Acme Rentals — React Embed Demo</title>
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="brand">Acme Rentals</div>
+      <nav>
+        <a href="/">Home</a>
+        <a href="/pricing.html">Pricing</a>
+        <a href="/support.html">Support</a>
+        <a href="/react-embed-demo.html" class="active">React Embed Demo</a>
+      </nav>
+    </header>
+
+    <main class="hero">
+      <h1>Module Federation embed (alternative to the script loader)</h1>
+      <p>
+        This page is itself a small React app. Instead of the <code>&lt;script&gt;</code>
+        loader every other page on this site uses, it dynamically loads the WebChat widget's
+        Module Federation remote directly — the same
+        <code>@module-federation/runtime</code> API RiptaCRM's own Host shell uses to load
+        admin-configured custom menu items at runtime. This path only makes sense for a
+        customer site that's itself a compatible React + Module Federation app.
+      </p>
+      <div id="widget-root"></div>
+    </main>
+
+    <script type="module" src="/src/main-embed.tsx"></script>
+  </body>
+</html>

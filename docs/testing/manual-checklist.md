@@ -36,6 +36,17 @@ Re-run this checklist (or the relevant section) whenever you touch the module it
 - [ ] Field/action config forms remain usable at mobile width
 - [ ] Loading, empty, and error states (e.g. no case types yet, a fetch failure) look intentional
 
+## WebChat module
+
+- [ ] Admin config MFE (Sites / Queues / Capacity Overrides / Routing Rules) is usable at all three breakpoints
+- [ ] Copy-embed-snippet and Regenerate Key controls on `SiteEditor` are usable on mobile (button reachable, snippet text doesn't overflow)
+- [ ] Script-embed widget (bubble + iframe on `apps/webchat-sample-site`'s Home/Pricing/Support pages) renders and is usable at mobile width — bubble doesn't overlap page content awkwardly, iframe panel is readable
+- [ ] Module Federation embed path (`react-embed-demo.html`) renders the same chat panel correctly, visually consistent with the iframe path
+- [ ] Auto-popup: with a `webchat-agent` queue member logged in and the queue's `autoPopup` on, a new inbound chat screen-pops without manual navigation; with `autoPopup` off, it appears only in the Worklist, "Claim" button, not a screen-pop
+- [ ] Worklist's generic table (cases + chats mixed, sorted by due date) is usable on mobile — kind indicator, title, and Claim/Open actions are all still legible and tappable
+- [ ] Claim-race UX: trigger a 409 (two admin sessions racing the same unclaimed chat) and confirm the inline error + refetch reads clearly, not just a raw error string
+- [ ] Spot-check the widget (bubble + iframe) in at least one non-Chromium browser — it runs on arbitrary third-party customer sites, so cross-browser rendering matters more here than for the rest of the app
+
 ## Cross-browser
 
 - [ ] Spot-check the above in at least one non-Chromium browser (Firefox or Safari) periodically — the Playwright E2E suite here only runs Chromium, so it cannot catch browser-specific rendering or drag/drop event differences

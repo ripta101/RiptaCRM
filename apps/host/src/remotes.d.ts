@@ -47,3 +47,29 @@ declare module "accessManagement/AccessManagementModule" {
   const AccessManagementModule: ComponentType<AccessManagementModuleProps>;
   export default AccessManagementModule;
 }
+
+declare module "webChat/WebChatModule" {
+  import type { ComponentType } from "react";
+
+  export interface WebChatModuleProps {
+    authToken?: string | null;
+  }
+
+  const WebChatModule: ComponentType<WebChatModuleProps>;
+  export default WebChatModule;
+}
+
+declare module "webChat/WebChatAgentModule" {
+  import type { ComponentType } from "react";
+
+  export interface WebChatAgentModuleProps {
+    conversationId: string;
+    authToken?: string | null;
+    currentUserId?: string | null;
+    closeRequested?: boolean;
+    onInteractionEnded?: () => void;
+  }
+
+  const WebChatAgentModule: ComponentType<WebChatAgentModuleProps>;
+  export default WebChatAgentModule;
+}
