@@ -4,6 +4,15 @@
 // vite.config.iframe.ts / src/iframe). Deliberately has no framework dependency: it must
 // be tiny and safe to run on any third-party page regardless of that page's own stack.
 
+const OPEN_STATE_KEY_PREFIX = "riptacrm-webchat-open";
+
+// Scoped to siteKey, same convention as ChatPanel's own conversation-id storage key — a
+// visitor with multiple of this app's widgets embedded on different sites in the same
+// browser shouldn't have one site's open/closed state leak into another's.
+function openStateKey(siteKey: string): string {
+  return `${OPEN_STATE_KEY_PREFIX}:${siteKey}`;
+}
+
 function currentScript(): HTMLScriptElement | null {
   // document.currentScript is only reliable for a synchronously-executing <script> tag,
   // which is exactly how this loader is meant to be included (no async/defer) — fall back
@@ -56,6 +65,12 @@ function init() {
     zIndex: "2147483000",
   } satisfies Partial<CSSStyleDeclaration>);
 
+  // Restores whatever the visitor last left it as — otherwise every full page navigation on
+  // a multi-page customer site (this loader re-executes from scratch on each one, unlike the
+  // SPA-embedded MFE path) would snap an open chat window shut, even though the conversation
+  // itself already survives navigation via ChatPanel's own localStorage-backed resume.
+  let open = localStorage.getItem(openStateKey(siteKey)) === "true";
+
   const frame = document.createElement("iframe");
   frame.src = iframeUrl;
   frame.title = "Chat with us";
@@ -70,14 +85,14 @@ function init() {
     borderRadius: "12px",
     boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
     zIndex: "2147483000",
-    display: "none",
+    display: open ? "block" : "none",
     colorScheme: "light",
   } satisfies Partial<CSSStyleDeclaration>);
 
-  let open = false;
   bubble.addEventListener("click", () => {
     open = !open;
     frame.style.display = open ? "block" : "none";
+    localStorage.setItem(openStateKey(siteKey), String(open));
   });
 
   document.body.appendChild(frame);

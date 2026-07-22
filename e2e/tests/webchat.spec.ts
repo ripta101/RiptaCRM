@@ -85,4 +85,33 @@ test.describe("WebChat", () => {
       await visitorContext.close();
     }
   });
+
+  test("the chat window stays open across a real page navigation on the customer site", async ({ page }) => {
+    // The loader script (apps/webchat-widget/src/loader/loader.ts) targets a real multi-page
+    // customer site, not an SPA — it re-executes from scratch on every page. Regression test
+    // for a bug where the open/closed bubble state lived only in that script's in-memory
+    // closure, so navigating to a different page always snapped an open chat window shut,
+    // even though the conversation itself already survived navigation via ChatPanel's own
+    // localStorage-backed resume.
+    let conversationId: string | undefined;
+
+    try {
+      const [startResponse] = await Promise.all([
+        page.waitForResponse(
+          (res) => res.url().includes("/api/public/conversations") && res.request().method() === "POST",
+        ),
+        page.goto(`${SAMPLE_SITE_URL}/support.html`),
+      ]);
+      conversationId = (await startResponse.json()).id as string;
+
+      await page.getByRole("button", { name: "💬" }).click();
+      await expect(page.locator("iframe[title='Chat with us']")).toBeVisible();
+
+      await page.goto(`${SAMPLE_SITE_URL}/pricing.html`);
+
+      await expect(page.locator("iframe[title='Chat with us']")).toBeVisible();
+    } finally {
+      if (conversationId) await deleteConversation(conversationId);
+    }
+  });
 });
