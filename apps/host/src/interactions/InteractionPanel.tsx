@@ -3,7 +3,7 @@ import { useAuth } from "@riptacrm/auth-client";
 import type { InteractionTab } from "@riptacrm/shared-types";
 import { useInteractions } from "./InteractionsContext";
 import { CustomerLookupRemote } from "./CustomerLookupRemote";
-import { WebChatInteractionRemote } from "./WebChatInteractionRemote";
+import { WebChatInteractionWorkspace } from "./WebChatInteractionWorkspace";
 
 interface InteractionPanelProps {
   tab: InteractionTab;
@@ -29,12 +29,16 @@ export function InteractionPanel({ tab }: InteractionPanelProps) {
       );
     case "webchat":
       return (
-        <WebChatInteractionRemote
+        <WebChatInteractionWorkspace
           conversationId={tab.meta?.conversationId ?? ""}
+          onCustomerIdentified={(customer) =>
+            renameTab(tab.id, `${customer.firstName} ${customer.lastName}`)
+          }
           closeRequested={closeRequestedTabId === tab.id}
           onInteractionEnded={() => closeInteraction(tab.id)}
           currentUserId={user?.id ?? null}
           authToken={user?.token ?? null}
+          grantedFeatureIds={user?.navItemIds}
         />
       );
     default:

@@ -146,6 +146,11 @@ export interface SendMessageRequest {
   body: string;
 }
 
+// Links an identified customer to a conversation — see webchat-api's PATCH /conversations/:id.
+export interface LinkConversationCustomerInput {
+  customerAccountId: string;
+}
+
 // Supervisor Dashboard — see webchat-api's routes/supervisor.ts.
 export interface SupervisorScopeQueue {
   id: string;

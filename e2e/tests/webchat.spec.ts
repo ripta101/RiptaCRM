@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { loginAsFrontline } from "../fixtures/auth";
-import { deleteConversation, getAgentStatusOptions, setAgentStatus } from "../fixtures/webchatApi";
+import { deleteConversation, getAgentStatusOptions, getConversation, setAgentStatus } from "../fixtures/webchatApi";
 
 // Reuses the seeded demo Site (siteKey embedded directly in apps/webchat-sample-site's
 // static pages) and its "General Support" queue (autoPopup: true, seeded members include
@@ -82,6 +82,26 @@ test.describe("WebChat", () => {
       await expect(
         widgetFrame.getByText("Happy to help — what's your rental confirmation number?"),
       ).toBeVisible({ timeout: 10_000 });
+
+      // The webchat tab now looks like a normal new interaction — Search Customer on the
+      // left, chat pinned on the right (WebChatInteractionWorkspace) — search for and
+      // identify the seeded "Ripta Ramelan" customer, same flow/selectors as
+      // customer-search.spec.ts's own search-and-confirm test.
+      await page.getByLabel("First name").fill("Ripta");
+      await page.getByRole("button", { name: "Search", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Ripta Ramelan" })).toBeVisible({ timeout: 10_000 });
+      await page.getByRole("button", { name: "Confirm" }).click();
+
+      // Tab renames to the customer's name (the chat-icon prefix isn't text-checkable here)
+      // — the chat transcript stays visible in the same view throughout, since the customer
+      // workspace and the chat panel are two panes of the same tab, not separate tabs.
+      await expect(page.getByRole("tab", { name: /Ripta Ramelan/ })).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText("Happy to help — what's your rental confirmation number?")).toBeVisible();
+
+      // The link is a real backend change, not just a UI relabel.
+      await expect
+        .poll(async () => (await getConversation(conversationId!)).customerAccountId, { timeout: 10_000 })
+        .not.toBeNull();
     } finally {
       if (conversationId) await deleteConversation(conversationId);
       await visitorContext.close();

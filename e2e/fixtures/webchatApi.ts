@@ -73,6 +73,10 @@ export async function closeConversation(conversationId: string): Promise<void> {
   await request(`/api/conversations/${conversationId}/close`, { method: "POST" });
 }
 
+export async function getConversation(conversationId: string): Promise<{ customerAccountId: string | null }> {
+  return request(`/api/conversations/${conversationId}`);
+}
+
 export async function grantCapacityOverride(userId: string, maxConcurrentChats: number): Promise<void> {
   await request(`/api/capacity-overrides/${userId}`, { method: "PUT", body: JSON.stringify({ maxConcurrentChats }) });
 }

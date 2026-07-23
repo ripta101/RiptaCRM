@@ -140,6 +140,48 @@ describe("POST /conversations/:id/close", () => {
   });
 });
 
+describe("PATCH /conversations/:id", () => {
+  it("links a customer to the conversation", async () => {
+    const siteId = await setupSite();
+    const conversation = await createConversation(siteId);
+
+    const res = await request(app)
+      .patch(`/api/conversations/${conversation.id}`)
+      .set(SERVICE_KEY_HEADER)
+      .send({ customerAccountId: "ACC-1001" });
+    expect(res.status).toBe(200);
+    expect(res.body.customerAccountId).toBe("ACC-1001");
+  });
+
+  it("re-linking overwrites the previous customer", async () => {
+    const siteId = await setupSite();
+    const conversation = await createConversation(siteId);
+    await request(app).patch(`/api/conversations/${conversation.id}`).set(SERVICE_KEY_HEADER).send({ customerAccountId: "ACC-1001" });
+
+    const res = await request(app)
+      .patch(`/api/conversations/${conversation.id}`)
+      .set(SERVICE_KEY_HEADER)
+      .send({ customerAccountId: "ACC-2002" });
+    expect(res.status).toBe(200);
+    expect(res.body.customerAccountId).toBe("ACC-2002");
+  });
+
+  it("rejects an empty customerAccountId", async () => {
+    const siteId = await setupSite();
+    const conversation = await createConversation(siteId);
+    const res = await request(app).patch(`/api/conversations/${conversation.id}`).set(SERVICE_KEY_HEADER).send({});
+    expect(res.status).toBe(400);
+  });
+
+  it("404s for an unknown conversation", async () => {
+    const res = await request(app)
+      .patch("/api/conversations/does-not-exist")
+      .set(SERVICE_KEY_HEADER)
+      .send({ customerAccountId: "ACC-1001" });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("GET /conversations/worklist", () => {
   it("splits results into assigned-to-me (not claimable) and unclaimed-in-my-queues (claimable)", async () => {
     const userId = `user-${randomUUID()}`;

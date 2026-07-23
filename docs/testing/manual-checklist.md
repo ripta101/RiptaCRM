@@ -49,6 +49,9 @@ Re-run this checklist (or the relevant section) whenever you touch the module it
 - [ ] Agent's "Close conversation" button (in the chat panel) is usable on mobile; after closing, the input disables and the closed notice is readable at narrow widths
 - [ ] Supervisor Dashboard (`/supervisor`) filter row (Queue / Profile / Agent search / date range) wraps sensibly on mobile instead of overflowing; results table is at least horizontally scrollable at mobile width
 - [ ] Access Management → a Profile's new Supervised Queues / Supervised Profiles sections are usable on mobile — pickers and per-row delete buttons stay reachable
+- [ ] Webchat interaction tab's combined layout (Search Customer + chat rail) stacks to a single column below the `md` breakpoint instead of squeezing side-by-side; the chat panel is still fully usable once stacked
+- [ ] On desktop, scroll through a customer's profile/case list inside a webchat tab and confirm the chat rail stays pinned in view (sticky) rather than scrolling away, and that this never forces the whole page to scroll past the top bar (tab bar should always stay visible)
+- [ ] Clicking a webchat tab's X shows the customer wrap-up screen (not an instant close); finishing wrap-up actually closes the tab
 
 ## Cross-browser
 

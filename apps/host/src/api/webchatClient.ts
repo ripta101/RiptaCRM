@@ -1,4 +1,10 @@
-import type { AgentStatus, AgentStatusOption, Conversation, WorklistItem } from "@riptacrm/shared-types";
+import type {
+  AgentStatus,
+  AgentStatusOption,
+  Conversation,
+  LinkConversationCustomerInput,
+  WorklistItem,
+} from "@riptacrm/shared-types";
 
 const BASE_URL = import.meta.env.VITE_WEBCHAT_API_URL ?? "http://localhost:4315";
 
@@ -12,6 +18,27 @@ export async function listChatWorklist(userId: string, token?: string | null): P
   }
   const data: { results: WorklistItem[] } = await res.json();
   return data.results;
+}
+
+export async function linkConversationCustomer(
+  conversationId: string,
+  customerAccountId: string,
+  token?: string | null,
+): Promise<Conversation> {
+  const input: LinkConversationCustomerInput = { customerAccountId };
+  const res = await fetch(`${BASE_URL}/api/conversations/${conversationId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : undefined),
+    },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? `Failed to link customer to conversation (${res.status})`);
+  }
+  return res.json();
 }
 
 export async function claimConversation(conversationId: string, token?: string | null): Promise<Conversation> {

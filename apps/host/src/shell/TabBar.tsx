@@ -1,4 +1,5 @@
 import { Box, IconButton, Tab, Tabs } from "@mui/material";
+import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import { useInteractions } from "../interactions/InteractionsContext";
 
@@ -28,6 +29,7 @@ export function TabBar() {
             value={tab.id}
             label={
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                {tab.kind === "webchat" && <ChatIcon fontSize="inherit" />}
                 {tab.title}
                 <IconButton
                   component="span"

@@ -177,6 +177,26 @@ conversationsRouter.post("/conversations/:id/close", requirePermission("webchat-
   res.json(toConversation(updated));
 });
 
+// Links an identified customer to the conversation — set once the agent confirms who
+// they're chatting with in the combined customer-workspace + chat layout (see Host's
+// WebChatInteractionWorkspace). Allows re-linking to a different customer with no special
+// guard, so an agent can correct a mis-identification.
+conversationsRouter.patch("/conversations/:id", requirePermission("webchat-agent"), async (req, res) => {
+  const body = req.body as { customerAccountId?: string };
+  if (!body.customerAccountId?.trim()) {
+    return res.status(400).json({ error: "customerAccountId is required." });
+  }
+
+  const existing = await prisma.conversation.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "Conversation not found." });
+
+  const updated = await prisma.conversation.update({
+    where: { id: req.params.id },
+    data: { customerAccountId: body.customerAccountId.trim() },
+  });
+  res.json(toConversation(updated));
+});
+
 conversationsRouter.post("/conversations/:id/messages", requirePermission("webchat-agent"), async (req, res) => {
   const body = req.body as { body?: string };
   if (!body.body?.trim()) return res.status(400).json({ error: "body is required." });
