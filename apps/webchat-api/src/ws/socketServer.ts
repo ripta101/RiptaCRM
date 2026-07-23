@@ -61,7 +61,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
 
   const agentsNamespace = io.of("/agents");
   agentsNamespace.use((socket, next) => {
-    const { token } = socket.handshake.auth as { token?: string };
+    const { token, scope } = socket.handshake.auth as { token?: string; scope?: string };
     if (!token) return next(new Error("token is required"));
 
     try {
@@ -70,6 +70,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
         return next(new Error("unauthorized"));
       }
       socket.data.userId = claims.sub;
+      socket.data.scope = scope;
       next();
     } catch {
       next(new Error("unauthorized"));
@@ -78,13 +79,20 @@ export function attachSocketServer(httpServer: HttpServer): Server {
   agentsNamespace.on("connection", (socket) => {
     socket.join(`agent:${socket.data.userId}`);
 
-    // AgentSocketProvider (Host) opens this connection once per login session and
-    // disconnects it on logout — a reliable proxy for "session start/end" (reconnects reuse
-    // the same client-side socket and don't re-trigger it). Clearing status on both connect
-    // and disconnect means an agent must consciously pick a status each session, per the
-    // confirmed requirement. Both are idempotent upserts, safe to run more than once (e.g.
-    // React StrictMode's dev-mode double-mount).
-    clearAgentStatus(socket.data.userId);
+    // This namespace is shared by two different kinds of client: AgentSocketProvider
+    // (Host) opens exactly one connection per login session and disconnects it on logout —
+    // a reliable proxy for "session start/end" — but WebChatAgentModule *also* connects
+    // here, once per open chat tab, purely to receive that conversation's live messages.
+    // Only the session-level connection should ever clear status (an agent must consciously
+    // pick a status each session, per the confirmed requirement) — clearing it for every
+    // per-conversation connect/disconnect too was a real bug: opening or closing a second
+    // chat tab silently wiped the agent's live status out from under an already-open first
+    // chat, so a subsequent claim/auto-route would fail with "not available" even though the
+    // TopBar still showed "Available" (stale — nothing ever told it the status was cleared).
+    // Both AgentSocketProvider's auth.scope:"session" tag and the upserts below are
+    // idempotent, safe to run more than once (e.g. React StrictMode's dev-mode double-mount).
+    const isSessionConnection = socket.data.scope === "session";
+    if (isSessionConnection) clearAgentStatus(socket.data.userId);
 
     socket.on("join-conversation", ({ conversationId }: { conversationId: string }) => {
       socket.join(`conversation:${conversationId}`);
@@ -93,7 +101,7 @@ export function attachSocketServer(httpServer: HttpServer): Server {
       socket.leave(`conversation:${conversationId}`);
     });
     socket.on("disconnect", () => {
-      clearAgentStatus(socket.data.userId);
+      if (isSessionConnection) clearAgentStatus(socket.data.userId);
     });
   });
 

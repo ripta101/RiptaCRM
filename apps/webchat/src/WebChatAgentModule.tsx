@@ -57,7 +57,12 @@ export default function WebChatAgentModule({
         if (!cancelled) setLoading(false);
       });
 
-    const socket = io(`${WEBCHAT_API_URL}/agents`, { auth: { token: authToken } });
+    // Deliberately NOT scope:"session" — this connects once per open chat tab, not once per
+    // login. The server only clears the agent's live status for the scope:"session"
+    // connection (Host's AgentSocketProvider); tagging this one that way too would wipe the
+    // agent's status every time a chat tab opens or closes. See webchat-api's
+    // ws/socketServer.ts.
+    const socket = io(`${WEBCHAT_API_URL}/agents`, { auth: { token: authToken, scope: "conversation" } });
     socket.on("connect", () => socket.emit("join-conversation", { conversationId }));
     socket.on("message:new", (m: Message) => {
       if (m.conversationId === conversationId) addMessage(m);

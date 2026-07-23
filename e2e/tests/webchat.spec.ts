@@ -226,4 +226,79 @@ test.describe("WebChat", () => {
       await visitorContext.close();
     }
   });
+
+  test("claiming a second chat still works while a first chat's own tab is already open", async ({
+    page,
+    browser,
+  }) => {
+    // Regression test: WebChatAgentModule opens its own per-conversation socket connection
+    // to the same /agents namespace AgentSocketProvider uses for its session-level
+    // connection — before the fix, the server cleared the agent's live status on EVERY
+    // connection to that namespace, not just the session one. Opening the first chat's tab
+    // (mounting its own socket) silently wiped the agent's "Available" status server-side —
+    // the TopBar kept showing "Available" (nothing ever told it otherwise), but the next
+    // claim failed with "Set your status to an available status before claiming chats."
+    test.setTimeout(90_000);
+
+    const visitorAContext = await browser.newContext();
+    const visitorBContext = await browser.newContext();
+    const visitorAPage = await visitorAContext.newPage();
+    const visitorBPage = await visitorBContext.newPage();
+    let conversationAId: string | undefined;
+    let conversationBId: string | undefined;
+
+    try {
+      await loginAsFrontline(page);
+      await expect(page.getByTestId("webchat-agent-socket-status")).toHaveAttribute("data-connected", "true", {
+        timeout: 10_000,
+      });
+      await page.getByTestId("agent-status-selector").click();
+      await page.getByRole("option", { name: "Available" }).click();
+
+      // First chat auto-pops into its own tab — this mounts WebChatAgentModule, opening the
+      // second (per-conversation) /agents connection the bug is about.
+      const [startAResponse] = await Promise.all([
+        visitorAPage.waitForResponse(
+          (res) => res.url().includes("/api/public/conversations") && res.request().method() === "POST",
+        ),
+        visitorAPage.goto(`${SAMPLE_SITE_URL}/support.html`),
+      ]);
+      conversationAId = (await startAResponse.json()).id as string;
+      await expect(page.getByRole("tab", { name: /Web Chat/i }).first()).toBeVisible({ timeout: 15_000 });
+
+      // Second visitor arrives on the same queue — "test" (user-1) is the only member with
+      // an available status set, so this either auto-assigns straight to them or, if their
+      // status was silently cleared by the first tab's socket (the bug), lands unassigned
+      // and claimable in the Worklist instead — either way, this is what actually surfaces
+      // the bug: a real "second chat while the first is open" scenario, not a contrived one.
+      const [startBResponse] = await Promise.all([
+        visitorBPage.waitForResponse(
+          (res) => res.url().includes("/api/public/conversations") && res.request().method() === "POST",
+        ),
+        visitorBPage.goto(`${SAMPLE_SITE_URL}/support.html`),
+      ]);
+      const startedB = await startBResponse.json();
+      conversationBId = startedB.id as string;
+
+      if (startedB.assignedToUserId === "user-1") {
+        // Status survived — auto-assigned straight through, same as the first chat.
+        await expect(page.getByRole("tab", { name: /Web Chat/i })).toHaveCount(2, { timeout: 15_000 });
+      } else {
+        // Status was wiped, so it's sitting unassigned — claim it via the Worklist, the
+        // exact action the bug report was about.
+        await page.getByRole("tab", { name: "Home" }).click();
+        await page.getByRole("tab", { name: /worklist/i }).click();
+        await expect(page.getByRole("button", { name: "Claim" })).toBeVisible({ timeout: 10_000 });
+        await page.getByRole("button", { name: "Claim" }).click();
+
+        await expect(page.getByText(/Set your status to an available status/i)).not.toBeVisible();
+        await expect(page.getByRole("tab", { name: /Web Chat/i })).toHaveCount(2, { timeout: 15_000 });
+      }
+    } finally {
+      if (conversationAId) await deleteConversation(conversationAId);
+      if (conversationBId) await deleteConversation(conversationBId);
+      await visitorAContext.close();
+      await visitorBContext.close();
+    }
+  });
 });

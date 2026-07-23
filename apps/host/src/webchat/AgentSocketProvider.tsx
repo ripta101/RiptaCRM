@@ -25,7 +25,12 @@ export function AgentSocketProvider() {
   useEffect(() => {
     if (!canWorkChats || !user?.token) return;
 
-    const socket = io(`${WEBCHAT_API_URL}/agents`, { auth: { token: user.token } });
+    // scope:"session" marks this as the one connection per login session that the server
+    // treats as a status-clearing boundary — see webchat-api's ws/socketServer.ts. Every
+    // WebChatAgentModule instance also connects to this same namespace (one per open chat
+    // tab) but must NOT be tagged "session", or opening/closing a chat tab would silently
+    // wipe the agent's live status out from under any other already-open chat.
+    const socket = io(`${WEBCHAT_API_URL}/agents`, { auth: { token: user.token, scope: "session" } });
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
     socket.on("chat:assigned", ({ conversationId, autoPopup }: ChatAssignedEvent) => {
