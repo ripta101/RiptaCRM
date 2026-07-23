@@ -3,7 +3,9 @@ import type {
   AgentStatus as PrismaAgentStatus,
   AgentStatusOption as PrismaAgentStatusOption,
   Conversation as PrismaConversation,
+  ConversationIntakeValue as PrismaConversationIntakeValue,
   Message as PrismaMessage,
+  PreChatField as PrismaPreChatField,
   RoutingRule as PrismaRoutingRule,
   Site as PrismaSite,
   WebChatQueue as PrismaWebChatQueue,
@@ -14,8 +16,11 @@ import type {
   AgentStatus,
   AgentStatusOption,
   Conversation,
+  ConversationIntakeValue,
   ConversationWithMessages,
+  FieldType,
   Message,
+  PreChatFieldDefinition,
   RoutingRule,
   RoutingRuleMatchType,
   Site,
@@ -79,7 +84,29 @@ export function toAgentStatus(s: PrismaAgentStatus): AgentStatus {
   return { optionId: s.optionId, updatedAt: s.updatedAt.toISOString() };
 }
 
-export function toConversation(c: PrismaConversation): Conversation {
+function toIntakeValue(v: PrismaConversationIntakeValue): ConversationIntakeValue {
+  return { fieldKey: v.fieldKey, label: v.label, value: v.value };
+}
+
+export function toPreChatField(f: PrismaPreChatField): PreChatFieldDefinition {
+  return {
+    id: f.id,
+    siteId: f.siteId,
+    fieldKey: f.fieldKey,
+    label: f.label,
+    fieldType: f.fieldType as FieldType,
+    required: f.required,
+    options: f.optionsJson ? (JSON.parse(f.optionsJson) as string[]) : null,
+    displayOrder: f.displayOrder,
+    createdAt: f.createdAt.toISOString(),
+    updatedAt: f.updatedAt.toISOString(),
+  };
+}
+
+// intakeValues is optional here — most call sites (lists, mutation results) don't need it
+// and don't `include` it, so it defaults to empty. GET /conversations/:id explicitly loads
+// it via toConversationWithMessages below, which requires the relation.
+export function toConversation(c: PrismaConversation & { intakeValues?: PrismaConversationIntakeValue[] }): Conversation {
   return {
     id: c.id,
     siteId: c.siteId,
@@ -93,6 +120,7 @@ export function toConversation(c: PrismaConversation): Conversation {
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
     closedAt: c.closedAt ? c.closedAt.toISOString() : null,
+    intakeValues: (c.intakeValues ?? []).map(toIntakeValue),
   };
 }
 
@@ -108,7 +136,7 @@ export function toMessage(m: PrismaMessage): Message {
 }
 
 export function toConversationWithMessages(
-  c: PrismaConversation & { messages: PrismaMessage[] },
+  c: PrismaConversation & { messages: PrismaMessage[]; intakeValues: PrismaConversationIntakeValue[] },
 ): ConversationWithMessages {
   return {
     ...toConversation(c),

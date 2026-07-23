@@ -1,3 +1,7 @@
+// Reused as-is from Case Management's configurable-field vocabulary — already generic (no
+// case-specific members), so no new type system for pre-chat fields below.
+import type { FieldType } from "./case";
+
 export interface Site {
   id: string;
   name: string;
@@ -97,6 +101,42 @@ export interface SetAgentStatusInput {
   optionId: string | null;
 }
 
+// Admin-configurable, per-Site — asked of a visitor before their first conversation starts
+// (see webchat-widget's PreChatForm). Mirrors Case Management's FieldDefinition shape.
+export interface PreChatFieldDefinition {
+  id: string;
+  siteId: string;
+  fieldKey: string;
+  label: string;
+  fieldType: FieldType;
+  required: boolean;
+  options: string[] | null;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePreChatFieldInput {
+  siteId: string;
+  fieldKey: string;
+  label: string;
+  fieldType: FieldType;
+  required: boolean;
+  options?: string[];
+  displayOrder: number;
+}
+
+export type UpdatePreChatFieldInput = Partial<Omit<CreatePreChatFieldInput, "siteId">>;
+
+// A single answer a visitor gave to a PreChatField, captured when their conversation was
+// created. `label` is a snapshot from submission time, not a live join — see webchat-api's
+// ConversationIntakeValue model.
+export interface ConversationIntakeValue {
+  fieldKey: string;
+  label: string;
+  value: string;
+}
+
 export type ConversationStatus = "OPEN" | "CLOSED";
 
 export type MessageSenderType = "VISITOR" | "AGENT" | "SYSTEM";
@@ -116,6 +156,7 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+  intakeValues: ConversationIntakeValue[];
 }
 
 export interface Message {
@@ -139,6 +180,9 @@ export interface StartConversationRequest {
   conversationId?: string;
   pageUrlPath: string;
   pageUrlFull?: string;
+  // Only meaningful (and validated) when actually creating a fresh conversation on a site
+  // that has PreChatFields configured — ignored when resuming an existing one.
+  intakeValues?: { fieldKey: string; value: string }[];
 }
 
 export interface SendMessageRequest {

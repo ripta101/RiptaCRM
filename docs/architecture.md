@@ -173,7 +173,7 @@ Every MFE now threads an `authToken` prop from the Host's `useAuth()` session do
 
 ## WebChat: the first public, unauthenticated endpoints
 
-Every route documented under "Authorization" above requires either an end-user JWT or the service-to-service key — until `webchat-api`'s `/api/public/*` router. A visitor on a customer's website has no account and no login flow at all, so `requirePermission()` genuinely cannot apply there; these three routes (`POST /conversations`, `POST /conversations/:id/messages`, `GET /conversations/:id`) carry **no** auth middleware whatsoever, mounted before (and with different CORS handling than) the rest of the API in `app.ts`.
+Every route documented under "Authorization" above requires either an end-user JWT or the service-to-service key — until `webchat-api`'s `/api/public/*` router. A visitor on a customer's website has no account and no login flow at all, so `requirePermission()` genuinely cannot apply there; these routes (`GET /sites/:siteKey/prechat-fields`, `POST /conversations`, `POST /conversations/:id/messages`, `GET /conversations/:id`) carry **no** auth middleware whatsoever, mounted before (and with different CORS handling than) the rest of the API in `app.ts`.
 
 The trust model is narrower, not absent:
 - **`siteKey`** — a per-`Site` value embedded directly in the widget's loader script or MF module props. Not secret (it's shipped to every visitor's browser by design, same posture as, say, a Stripe publishable key), but every public route validates it resolves to a real, active `Site` before doing anything else.

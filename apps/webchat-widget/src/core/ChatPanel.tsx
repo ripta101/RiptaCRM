@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { ConversationWithMessages, Message } from "@riptacrm/shared-types";
+import type { ConversationWithMessages, Message, PreChatFieldDefinition } from "@riptacrm/shared-types";
+import { PreChatForm } from "./PreChatForm";
 
 const WEBCHAT_API_URL = import.meta.env.VITE_WEBCHAT_API_URL ?? "http://localhost:4315";
 const STORAGE_KEY_PREFIX = "riptacrm-webchat-conversation-id";
@@ -34,57 +35,98 @@ export function ChatPanel({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Non-null only for a brand-new conversation (no stored id) on a site that has
+  // PreChatFields configured — holds off the POST /conversations below until the visitor
+  // submits this form. Resuming an existing conversation, or a site with none configured,
+  // skips straight to starting the chat exactly as before this feature existed.
+  const [preChatFields, setPreChatFields] = useState<PreChatFieldDefinition[] | null>(null);
+  const [preChatValues, setPreChatValues] = useState<Record<string, string>>({});
+  const [preChatSubmitting, setPreChatSubmitting] = useState(false);
+  const [preChatError, setPreChatError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(true);
 
   function addMessage(message: Message) {
     setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
   }
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function start() {
-      setLoading(true);
-      setError(null);
-      try {
-        const storedId = localStorage.getItem(storageKey(siteKey));
-        const res = await fetch(`${WEBCHAT_API_URL}/api/public/conversations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            siteKey,
-            conversationId: storedId ?? undefined,
-            pageUrlPath,
-            pageUrlFull,
-          }),
-        });
-        if (!res.ok) throw new Error(`Failed to start chat (${res.status})`);
-        const data: ConversationWithMessages = await res.json();
-        if (cancelled) return;
-
-        localStorage.setItem(storageKey(siteKey), data.id);
-        setConversation(data);
-        setMessages(data.messages);
-
-        const socket = io(`${WEBCHAT_API_URL}/visitor`, {
-          auth: { siteKey, conversationId: data.id },
-        });
-        socket.on("message:new", (m: Message) => addMessage(m));
-        socketRef.current = socket;
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to start chat.");
-      } finally {
-        if (!cancelled) setLoading(false);
+  async function startConversation(intakeValues?: { fieldKey: string; value: string }[]) {
+    setLoading(true);
+    setError(null);
+    try {
+      const storedId = localStorage.getItem(storageKey(siteKey));
+      const res = await fetch(`${WEBCHAT_API_URL}/api/public/conversations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteKey,
+          conversationId: storedId ?? undefined,
+          pageUrlPath,
+          pageUrlFull,
+          intakeValues,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? `Failed to start chat (${res.status})`);
       }
+      const data: ConversationWithMessages = await res.json();
+      if (!mountedRef.current) return;
+
+      localStorage.setItem(storageKey(siteKey), data.id);
+      setConversation(data);
+      setMessages(data.messages);
+      setPreChatFields(null);
+
+      const socket = io(`${WEBCHAT_API_URL}/visitor`, {
+        auth: { siteKey, conversationId: data.id },
+      });
+      socket.on("message:new", (m: Message) => addMessage(m));
+      socketRef.current = socket;
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : "Unable to start chat.");
+      throw err;
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    async function init() {
+      const storedId = localStorage.getItem(storageKey(siteKey));
+      if (storedId) {
+        await startConversation().catch(() => {});
+        return;
+      }
+
+      // Fresh visitor — check whether this site has a pre-chat form to show first. Fails
+      // soft to the ungated flow (matches this file's existing error posture) so a broken
+      // fetch here never strands a visitor who'd otherwise have no fields to fill in anyway.
+      try {
+        const res = await fetch(`${WEBCHAT_API_URL}/api/public/sites/${encodeURIComponent(siteKey)}/prechat-fields`);
+        const data: { results: PreChatFieldDefinition[] } = res.ok ? await res.json() : { results: [] };
+        if (!mountedRef.current) return;
+        if (data.results.length > 0) {
+          setPreChatFields(data.results);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // fall through to the ungated flow
+      }
+      if (mountedRef.current) await startConversation().catch(() => {});
     }
 
-    start();
+    init();
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey, pageUrlPath, pageUrlFull]);
 
   useEffect(() => {
@@ -111,6 +153,44 @@ export function ChatPanel({
     } finally {
       setSending(false);
     }
+  }
+
+  async function handlePreChatSubmit() {
+    if (!preChatFields) return;
+    const missing = preChatFields.filter((f) => f.required && !preChatValues[f.fieldKey]?.trim());
+    if (missing.length > 0) {
+      setPreChatError(`Please fill in: ${missing.map((f) => f.label).join(", ")}`);
+      return;
+    }
+
+    setPreChatSubmitting(true);
+    setPreChatError(null);
+    try {
+      const intakeValues = preChatFields
+        .filter((f) => preChatValues[f.fieldKey]?.trim())
+        .map((f) => ({ fieldKey: f.fieldKey, value: preChatValues[f.fieldKey].trim() }));
+      await startConversation(intakeValues);
+    } catch (err) {
+      setPreChatError(err instanceof Error ? err.message : "Unable to start chat.");
+    } finally {
+      if (mountedRef.current) setPreChatSubmitting(false);
+    }
+  }
+
+  if (preChatFields) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.header}>Chat with us</div>
+        <PreChatForm
+          fields={preChatFields}
+          values={preChatValues}
+          onChange={(fieldKey, value) => setPreChatValues((prev) => ({ ...prev, [fieldKey]: value }))}
+          onSubmit={handlePreChatSubmit}
+          submitting={preChatSubmitting}
+          error={preChatError}
+        />
+      </div>
+    );
   }
 
   return (

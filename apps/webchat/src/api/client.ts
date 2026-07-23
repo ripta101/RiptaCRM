@@ -5,14 +5,17 @@ import type {
   Conversation,
   ConversationWithMessages,
   CreateAgentStatusOptionInput,
+  CreatePreChatFieldInput,
   CreateRoutingRuleInput,
   CreateSiteInput,
   CreateWebChatQueueInput,
   Message,
+  PreChatFieldDefinition,
   RoutingRule,
   Site,
   SupervisorAgentsResponse,
   UpdateAgentStatusOptionInput,
+  UpdatePreChatFieldInput,
   UpdateRoutingRuleInput,
   UpdateSiteInput,
   UpdateWebChatQueueInput,
@@ -75,6 +78,20 @@ export const updateRoutingRule = (id: string, input: UpdateRoutingRuleInput, tok
   request<RoutingRule>(`/api/routing-rules/${id}`, { method: "PATCH", body: JSON.stringify(input) }, token);
 export const deleteRoutingRule = (id: string, token?: string | null) =>
   request<void>(`/api/routing-rules/${id}`, { method: "DELETE" }, token);
+
+// Pre-chat fields
+export const listPreChatFields = (siteId: string, token?: string | null) => {
+  const qs = new URLSearchParams({ siteId });
+  return request<{ results: PreChatFieldDefinition[] }>(`/api/prechat-fields?${qs.toString()}`, undefined, token).then(
+    (r) => r.results,
+  );
+};
+export const createPreChatField = (input: CreatePreChatFieldInput, token?: string | null) =>
+  request<PreChatFieldDefinition>("/api/prechat-fields", { method: "POST", body: JSON.stringify(input) }, token);
+export const updatePreChatField = (id: string, input: UpdatePreChatFieldInput, token?: string | null) =>
+  request<PreChatFieldDefinition>(`/api/prechat-fields/${id}`, { method: "PATCH", body: JSON.stringify(input) }, token);
+export const deletePreChatField = (id: string, token?: string | null) =>
+  request<void>(`/api/prechat-fields/${id}`, { method: "DELETE" }, token);
 
 // Capacity overrides
 export const listCapacityOverrides = (params: Record<string, string | undefined> = {}, token?: string | null) => {

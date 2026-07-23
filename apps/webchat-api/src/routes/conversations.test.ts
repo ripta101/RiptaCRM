@@ -89,6 +89,18 @@ describe("Admin conversation routes", () => {
     expect(found.body.messages).toEqual([]);
   });
 
+  it("GET /conversations/:id includes intakeValues when present", async () => {
+    const siteId = await setupSite();
+    const conversation = await createConversation(siteId);
+    await prisma.conversationIntakeValue.create({
+      data: { conversationId: conversation.id, fieldKey: "firstName", label: "First Name", value: "Ada" },
+    });
+
+    const res = await request(app).get(`/api/conversations/${conversation.id}`).set(SERVICE_KEY_HEADER);
+    expect(res.status).toBe(200);
+    expect(res.body.intakeValues).toEqual([{ fieldKey: "firstName", label: "First Name", value: "Ada" }]);
+  });
+
   it("GET /conversations/:id accepts any authenticated user, not just webchat-config", async () => {
     const siteId = await setupSite();
     const conversation = await createConversation(siteId);

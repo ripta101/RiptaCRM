@@ -21,6 +21,7 @@ import {
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import type { Site, WebChatQueue } from "@riptacrm/shared-types";
 import { getSite, listQueues, regenerateSiteKey, updateSite } from "../api/client";
+import { PreChatFieldEditor } from "./PreChatFieldEditor";
 import { RoutingRuleEditor } from "./RoutingRuleEditor";
 
 interface SiteEditorProps {
@@ -230,6 +231,10 @@ export function SiteEditor({ siteId, onBack, authToken }: SiteEditorProps) {
       <Divider sx={{ mb: 3 }} />
 
       <RoutingRuleEditor siteId={siteId} queues={queues} authToken={authToken} />
+
+      <Divider sx={{ my: 3 }} />
+
+      <PreChatFieldEditor siteId={siteId} authToken={authToken} />
 
       <Dialog open={regenDialogOpen} onClose={() => setRegenDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Regenerate Site Key?</DialogTitle>

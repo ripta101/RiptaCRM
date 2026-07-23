@@ -79,7 +79,7 @@ function toWorklistItem(
 conversationsRouter.get("/conversations/:id", requirePermission(), async (req, res) => {
   const conversation = await prisma.conversation.findUnique({
     where: { id: req.params.id },
-    include: { messages: true },
+    include: { messages: true, intakeValues: true },
   });
   if (!conversation) return res.status(404).json({ error: "Conversation not found." });
   res.json(toConversationWithMessages(conversation));

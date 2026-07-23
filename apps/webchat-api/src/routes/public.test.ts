@@ -12,10 +12,12 @@ const createdQueueIds: string[] = [];
 const createdConversationIds: string[] = [];
 const createdStatusUserIds: string[] = [];
 const createdStatusOptionIds: string[] = [];
+const createdPreChatFieldIds: string[] = [];
 
 afterEach(async () => {
   await prisma.message.deleteMany({ where: { conversationId: { in: createdConversationIds } } });
   await prisma.conversation.deleteMany({ where: { id: { in: createdConversationIds.splice(0) } } });
+  await prisma.preChatField.deleteMany({ where: { id: { in: createdPreChatFieldIds.splice(0) } } });
   await prisma.routingRule.deleteMany({ where: { siteId: { in: createdSiteIds } } });
   await prisma.site.deleteMany({ where: { id: { in: createdSiteIds.splice(0) } } });
   await prisma.webChatQueue.deleteMany({ where: { id: { in: createdQueueIds.splice(0) } } });
@@ -112,6 +114,69 @@ describe("POST /api/public/conversations", () => {
     expect(res.status).toBe(201);
     createdConversationIds.push(res.body.id);
     expect(res.body.id).not.toBe("not-a-real-conversation");
+  });
+
+  it("ignores intakeValues entirely for a site with no PreChatFields configured", async () => {
+    const { siteKey } = await setupSiteWithRule();
+    const res = await request(app).post("/api/public/conversations").send({ siteKey, pageUrlPath: "/support" });
+    expect(res.status).toBe(201);
+    createdConversationIds.push(res.body.id);
+    expect(res.body.intakeValues).toEqual([]);
+  });
+
+  it("400s when a required PreChatField is missing from intakeValues", async () => {
+    const { siteKey, siteId } = await setupSiteWithRule();
+    const field = await request(app)
+      .post("/api/prechat-fields")
+      .set(SERVICE_KEY_HEADER)
+      .send({ siteId, fieldKey: "firstName", label: "First Name", fieldType: "TEXT", required: true });
+    createdPreChatFieldIds.push(field.body.id);
+
+    const res = await request(app).post("/api/public/conversations").send({ siteKey, pageUrlPath: "/support" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("First Name");
+  });
+
+  it("creates ConversationIntakeValue rows when required PreChatFields are satisfied", async () => {
+    const { siteKey, siteId } = await setupSiteWithRule();
+    const field = await request(app)
+      .post("/api/prechat-fields")
+      .set(SERVICE_KEY_HEADER)
+      .send({ siteId, fieldKey: "firstName", label: "First Name", fieldType: "TEXT", required: true });
+    createdPreChatFieldIds.push(field.body.id);
+
+    const res = await request(app)
+      .post("/api/public/conversations")
+      .send({ siteKey, pageUrlPath: "/support", intakeValues: [{ fieldKey: "firstName", value: "Ada" }] });
+    expect(res.status).toBe(201);
+    createdConversationIds.push(res.body.id);
+    expect(res.body.intakeValues).toEqual([{ fieldKey: "firstName", label: "First Name", value: "Ada" }]);
+  });
+});
+
+describe("GET /api/public/sites/:siteKey/prechat-fields", () => {
+  it("returns the site's fields sorted by displayOrder", async () => {
+    const { siteKey, siteId } = await setupSiteWithRule();
+    const second = await request(app)
+      .post("/api/prechat-fields")
+      .set(SERVICE_KEY_HEADER)
+      .send({ siteId, fieldKey: "lastName", label: "Last Name", fieldType: "TEXT", displayOrder: 1 });
+    createdPreChatFieldIds.push(second.body.id);
+    const first = await request(app)
+      .post("/api/prechat-fields")
+      .set(SERVICE_KEY_HEADER)
+      .send({ siteId, fieldKey: "firstName", label: "First Name", fieldType: "TEXT", displayOrder: 0 });
+    createdPreChatFieldIds.push(first.body.id);
+
+    const res = await request(app).get(`/api/public/sites/${siteKey}/prechat-fields`);
+    expect(res.status).toBe(200);
+    expect(res.body.results.map((f: { fieldKey: string }) => f.fieldKey)).toEqual(["firstName", "lastName"]);
+  });
+
+  it("returns an empty list for an unknown siteKey rather than erroring", async () => {
+    const res = await request(app).get("/api/public/sites/not-a-real-key/prechat-fields");
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([]);
   });
 });
 

@@ -21,6 +21,7 @@ model Site {
 
   rules         RoutingRule[]
   conversations Conversation[]
+  preChatFields PreChatField[]
 }
 
 model WebChatQueue {
@@ -107,7 +108,39 @@ model Conversation {
   updatedAt         DateTime  @updatedAt
   closedAt          DateTime?
 
-  messages Message[]
+  messages     Message[]
+  intakeValues ConversationIntakeValue[]
+}
+
+model PreChatField {
+  id           String   @id @default(uuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  fieldKey     String
+  label        String
+  fieldType    String // "TEXT" | "NUMBER" | "DATE" | "SELECT" | "TEXTAREA" | "CHECKBOX"
+  required     Boolean  @default(false)
+  optionsJson  String? // JSON array, SELECT only
+  displayOrder Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([siteId, fieldKey])
+}
+
+// One row per pre-chat field the visitor answered, captured when the conversation was
+// created. `label` is snapshotted at submission time rather than joined from PreChatField —
+// stays readable even if the admin later renames/deletes that field definition.
+model ConversationIntakeValue {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  fieldKey       String
+  label          String
+  value          String
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, fieldKey])
 }
 
 model Message {

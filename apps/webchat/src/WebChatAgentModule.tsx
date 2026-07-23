@@ -153,6 +153,24 @@ export default function WebChatAgentModule({
         </Alert>
       )}
 
+      {conversation && conversation.intakeValues.length > 0 && (
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
+            Visitor details
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            {conversation.intakeValues.map((iv) => (
+              <Box key={iv.fieldKey}>
+                <Typography variant="caption" color="text.secondary" component="div">
+                  {iv.label}
+                </Typography>
+                <Typography variant="body2">{iv.value}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+
       {error && (
         <Alert severity="warning" sx={{ mb: 1 }} onClose={() => setError(null)}>
           {error}

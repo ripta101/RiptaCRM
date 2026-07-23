@@ -52,6 +52,8 @@ Re-run this checklist (or the relevant section) whenever you touch the module it
 - [ ] Webchat interaction tab's combined layout (Search Customer + chat rail) stacks to a single column below the `md` breakpoint instead of squeezing side-by-side; the chat panel is still fully usable once stacked
 - [ ] On desktop, scroll through a customer's profile/case list inside a webchat tab and confirm the chat rail stays pinned in view (sticky) rather than scrolling away, and that this never forces the whole page to scroll past the top bar (tab bar should always stay visible)
 - [ ] Clicking a webchat tab's X shows the customer wrap-up screen (not an instant close); finishing wrap-up actually closes the tab
+- [ ] Pre-chat Fields editor (`SiteEditor`, below Routing Rules) is usable on mobile — the Add Field row's inputs stay reachable and don't overflow
+- [ ] With Pre-chat Fields configured on a site, the widget's pre-chat form (select/textarea/checkbox field types, not just text) is legible and usable at mobile width inside the iframe panel; the "Visitor details" section on the agent's chat panel wraps sensibly on mobile instead of overflowing
 
 ## Cross-browser
 

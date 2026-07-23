@@ -56,6 +56,13 @@ export async function deleteSite(siteId: string): Promise<void> {
   await request(`/api/sites/${siteId}`, { method: "DELETE" }).catch(() => undefined);
 }
 
+export async function getSiteIdBySiteKey(siteKey: string): Promise<string> {
+  const { results } = await request<{ results: ThrowawaySite[] }>("/api/sites");
+  const site = results.find((s) => s.siteKey === siteKey);
+  if (!site) throw new Error(`No seeded site found with siteKey="${siteKey}"`);
+  return site.id;
+}
+
 export async function createRoutingRule(input: {
   siteId: string;
   pattern: string;
@@ -63,6 +70,21 @@ export async function createRoutingRule(input: {
   targetQueueId: string;
 }): Promise<{ id: string }> {
   return request<{ id: string }>("/api/routing-rules", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function createPreChatField(input: {
+  siteId: string;
+  fieldKey: string;
+  label: string;
+  fieldType: string;
+  required?: boolean;
+  displayOrder?: number;
+}): Promise<{ id: string }> {
+  return request<{ id: string }>("/api/prechat-fields", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function deletePreChatField(fieldId: string): Promise<void> {
+  await request(`/api/prechat-fields/${fieldId}`, { method: "DELETE" }).catch(() => undefined);
 }
 
 export async function deleteConversation(conversationId: string): Promise<void> {

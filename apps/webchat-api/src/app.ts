@@ -4,6 +4,7 @@ import { publicCors } from "./lib/originValidator";
 import { agentStatusRouter } from "./routes/agentStatus";
 import { capacityOverridesRouter } from "./routes/capacityOverrides";
 import { conversationsRouter } from "./routes/conversations";
+import { preChatFieldsRouter } from "./routes/preChatFields";
 import { publicRouter } from "./routes/public";
 import { routingRulesRouter } from "./routes/routingRules";
 import { sitesRouter } from "./routes/sites";
@@ -36,6 +37,7 @@ export function createApp() {
   app.use("/api", cors({ origin: origins }), sitesRouter);
   app.use("/api", cors({ origin: origins }), queuesRouter);
   app.use("/api", cors({ origin: origins }), routingRulesRouter);
+  app.use("/api", cors({ origin: origins }), preChatFieldsRouter);
   app.use("/api", cors({ origin: origins }), capacityOverridesRouter);
   app.use("/api", cors({ origin: origins }), agentStatusRouter);
   app.use("/api", cors({ origin: origins }), conversationsRouter);
