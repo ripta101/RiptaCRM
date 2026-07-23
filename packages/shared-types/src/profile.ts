@@ -18,6 +18,11 @@ export interface Profile {
   // their label/type/url. See access-management-api's toProfile() mapper.
   customMenuItems: CustomMenuItem[];
   memberUserIds: string[];
+  // Supervisor-scope grants: WebChat Queue ids and other Profile ids this Profile's members
+  // (acting as supervisors) may see on the Supervisor Dashboard — union semantics, see
+  // webchat-api's GET /supervisor/agents.
+  supervisedQueueIds: string[];
+  supervisedProfileIds: string[];
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -34,6 +39,14 @@ export type UpdateProfileInput = Partial<CreateProfileInput> & { navItemIds?: st
 
 export interface AddProfileMemberInput {
   userId: string;
+}
+
+export interface AddSupervisedQueueInput {
+  queueId: string;
+}
+
+export interface AddSupervisedProfileInput {
+  supervisedProfileId: string;
 }
 
 // A user's own account is authoritative in auth-api; this is the shape access-management-api

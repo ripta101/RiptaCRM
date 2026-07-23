@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -26,12 +27,18 @@ import type { CustomMenuItem, DashboardType, Profile, UserSummary } from "@ripta
 import { UserAutocomplete } from "@riptacrm/ui";
 import {
   addProfileMember,
+  addSupervisedProfile,
+  addSupervisedQueue,
   archiveProfile,
   deleteProfile,
   getProfile,
   listMenuItems,
+  listProfiles,
   listUsers,
+  listWebchatQueues,
   removeProfileMember,
+  removeSupervisedProfile,
+  removeSupervisedQueue,
   updateProfile,
 } from "../api/client";
 
@@ -60,14 +67,24 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
   const [memberError, setMemberError] = useState<string | null>(null);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
 
+  const [webchatQueues, setWebchatQueues] = useState<{ id: string; name: string }[]>([]);
+  const [queueToAdd, setQueueToAdd] = useState<{ id: string; name: string } | null>(null);
+  const [supervisedQueueError, setSupervisedQueueError] = useState<string | null>(null);
+
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [profileToAdd, setProfileToAdd] = useState<Profile | null>(null);
+  const [supervisedProfileError, setSupervisedProfileError] = useState<string | null>(null);
+
   function load() {
     setLoading(true);
-    Promise.all([getProfile(profileId, authToken), listMenuItems(authToken)])
-      .then(([p, m]) =>
+    Promise.all([getProfile(profileId, authToken), listMenuItems(authToken), listWebchatQueues(authToken), listProfiles({}, authToken)])
+      .then(([p, m, queues, profiles]) =>
         listUsers({ ids: p.memberUserIds.join(",") }, authToken).then((u) => {
           setProfile(p);
           setUsers(u);
           setCustomMenuItems(m);
+          setWebchatQueues(queues);
+          setAllProfiles(profiles);
           setName(p.name);
           setDashboardType(p.dashboardType);
           setCanStartInteractions(p.canStartInteractions);
@@ -133,6 +150,52 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
     }
   }
 
+  async function handleAddSupervisedQueue() {
+    if (!queueToAdd) return;
+    setSupervisedQueueError(null);
+    try {
+      const updated = await addSupervisedQueue(profileId, { queueId: queueToAdd.id }, authToken);
+      setProfile(updated);
+      setQueueToAdd(null);
+    } catch (err) {
+      setSupervisedQueueError(err instanceof Error ? err.message : "Failed to add supervised queue.");
+    }
+  }
+
+  async function handleRemoveSupervisedQueue(queueId: string) {
+    setSupervisedQueueError(null);
+    try {
+      await removeSupervisedQueue(profileId, queueId, authToken);
+      setProfile((prev) => (prev ? { ...prev, supervisedQueueIds: prev.supervisedQueueIds.filter((id) => id !== queueId) } : prev));
+    } catch (err) {
+      setSupervisedQueueError(err instanceof Error ? err.message : "Failed to remove supervised queue.");
+    }
+  }
+
+  async function handleAddSupervisedProfile() {
+    if (!profileToAdd) return;
+    setSupervisedProfileError(null);
+    try {
+      const updated = await addSupervisedProfile(profileId, { supervisedProfileId: profileToAdd.id }, authToken);
+      setProfile(updated);
+      setProfileToAdd(null);
+    } catch (err) {
+      setSupervisedProfileError(err instanceof Error ? err.message : "Failed to add supervised profile.");
+    }
+  }
+
+  async function handleRemoveSupervisedProfile(supervisedProfileId: string) {
+    setSupervisedProfileError(null);
+    try {
+      await removeSupervisedProfile(profileId, supervisedProfileId, authToken);
+      setProfile((prev) =>
+        prev ? { ...prev, supervisedProfileIds: prev.supervisedProfileIds.filter((id) => id !== supervisedProfileId) } : prev,
+      );
+    } catch (err) {
+      setSupervisedProfileError(err instanceof Error ? err.message : "Failed to remove supervised profile.");
+    }
+  }
+
   async function handleArchive() {
     setLifecycleError(null);
     try {
@@ -166,6 +229,9 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
   }
 
   const userById = new Map(users.map((u) => [u.id, u]));
+  const queueNameById = new Map(webchatQueues.map((q) => [q.id, q.name]));
+  const profileNameById = new Map(allProfiles.map((p) => [p.id, p.name]));
+  const supervisableProfiles = allProfiles.filter((p) => p.id !== profile.id && !p.archivedAt);
   const hasMembers = profile.memberUserIds.length > 0;
   const lifecycleDisabledReason = profile.isProtected
     ? "This profile is protected and cannot be archived or deleted."
@@ -352,6 +418,118 @@ export function ProfileEditor({ profileId, onBack, authToken }: ProfileEditorPro
         />
         <Button variant="outlined" disabled={!memberToAdd} onClick={handleAddMember}>
           Add
+        </Button>
+      </Stack>
+
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Supervised Queues
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        WebChat queues this profile's members (acting as supervisors) can see on the Supervisor Dashboard.
+      </Typography>
+      {supervisedQueueError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {supervisedQueueError}
+        </Alert>
+      )}
+      <Paper variant="outlined" sx={{ mb: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Queue</TableCell>
+              <TableCell align="right" />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {profile.supervisedQueueIds.map((queueId) => (
+              <TableRow key={queueId}>
+                <TableCell>{queueNameById.get(queueId) ?? queueId}</TableCell>
+                <TableCell align="right">
+                  <IconButton size="small" onClick={() => handleRemoveSupervisedQueue(queueId)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+            {profile.supervisedQueueIds.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={2}>
+                  <Typography color="text.secondary">No supervised queues yet.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
+        <Autocomplete
+          size="small"
+          sx={{ minWidth: 220 }}
+          value={queueToAdd}
+          onChange={(_e, newValue) => setQueueToAdd(newValue)}
+          options={webchatQueues.filter((q) => !profile.supervisedQueueIds.includes(q.id))}
+          getOptionLabel={(q) => q.name}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          renderInput={(params) => <TextField {...params} label="Add supervised queue" />}
+        />
+        <Button variant="outlined" disabled={!queueToAdd} onClick={handleAddSupervisedQueue}>
+          Grant queue
+        </Button>
+      </Stack>
+
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Supervised Profiles
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        Other Profiles whose members this profile's supervisors can see on the Supervisor Dashboard.
+      </Typography>
+      {supervisedProfileError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {supervisedProfileError}
+        </Alert>
+      )}
+      <Paper variant="outlined" sx={{ mb: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Profile</TableCell>
+              <TableCell align="right" />
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {profile.supervisedProfileIds.map((supervisedProfileId) => (
+              <TableRow key={supervisedProfileId}>
+                <TableCell>{profileNameById.get(supervisedProfileId) ?? supervisedProfileId}</TableCell>
+                <TableCell align="right">
+                  <IconButton size="small" onClick={() => handleRemoveSupervisedProfile(supervisedProfileId)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+            {profile.supervisedProfileIds.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={2}>
+                  <Typography color="text.secondary">No supervised profiles yet.</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Paper>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
+        <Autocomplete
+          size="small"
+          sx={{ minWidth: 220 }}
+          value={profileToAdd}
+          onChange={(_e, newValue) => setProfileToAdd(newValue)}
+          options={supervisableProfiles.filter((p) => !profile.supervisedProfileIds.includes(p.id))}
+          getOptionLabel={(p) => p.name}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          renderInput={(params) => <TextField {...params} label="Add supervised profile" />}
+        />
+        <Button variant="outlined" disabled={!profileToAdd} onClick={handleAddSupervisedProfile}>
+          Grant profile
         </Button>
       </Stack>
 

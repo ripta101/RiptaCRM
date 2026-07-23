@@ -21,6 +21,13 @@ model Profile {
 
   navItems ProfileNavItem[]
   members  ProfileUser[]
+
+  // Supervisor-scope grants: WebChat queues and other Profiles this Profile's members
+  // (acting as supervisors) may see on the Supervisor Dashboard. Union semantics — see
+  // webchat-api's routes/supervisor.ts.
+  supervisedQueues ProfileSupervisedQueue[]
+  supervisorOf     ProfileSupervisedProfile[] @relation("Supervisor")
+  supervisedBy     ProfileSupervisedProfile[] @relation("Supervised")
 }
 
 model ProfileNavItem {
@@ -41,6 +48,27 @@ model ProfileUser {
   createdAt DateTime @default(now())
 
   @@unique([profileId, userId])
+}
+
+model ProfileSupervisedQueue {
+  id        String   @id @default(uuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  queueId   String // plain, unvalidated — webchat-api's WebChatQueue.id; mirrors ProfileUser.userId
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, queueId])
+}
+
+model ProfileSupervisedProfile {
+  id                  String   @id @default(uuid())
+  profileId           String // the supervisor Profile
+  profile             Profile  @relation("Supervisor", fields: [profileId], references: [id], onDelete: Cascade)
+  supervisedProfileId String // real FK — Profiles are local to this service
+  supervisedProfile   Profile  @relation("Supervised", fields: [supervisedProfileId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+
+  @@unique([profileId, supervisedProfileId])
 }
 
 model MenuItem {

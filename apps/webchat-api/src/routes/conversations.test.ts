@@ -113,6 +113,33 @@ describe("Admin conversation routes", () => {
   });
 });
 
+describe("POST /conversations/:id/close", () => {
+  it("closes an OPEN conversation", async () => {
+    const siteId = await setupSite();
+    const conversation = await createConversation(siteId);
+
+    const res = await request(app).post(`/api/conversations/${conversation.id}/close`).set(SERVICE_KEY_HEADER);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("CLOSED");
+    expect(res.body.closedAt).not.toBeNull();
+  });
+
+  it("is idempotent — closing an already-closed conversation returns it unchanged", async () => {
+    const siteId = await setupSite();
+    const conversation = await createConversation(siteId);
+    const first = await request(app).post(`/api/conversations/${conversation.id}/close`).set(SERVICE_KEY_HEADER);
+
+    const second = await request(app).post(`/api/conversations/${conversation.id}/close`).set(SERVICE_KEY_HEADER);
+    expect(second.status).toBe(200);
+    expect(second.body.closedAt).toBe(first.body.closedAt);
+  });
+
+  it("404s for an unknown conversation", async () => {
+    const res = await request(app).post("/api/conversations/does-not-exist/close").set(SERVICE_KEY_HEADER);
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("GET /conversations/worklist", () => {
   it("splits results into assigned-to-me (not claimable) and unclaimed-in-my-queues (claimable)", async () => {
     const userId = `user-${randomUUID()}`;

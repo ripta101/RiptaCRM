@@ -46,6 +46,9 @@ Re-run this checklist (or the relevant section) whenever you touch the module it
 - [ ] Worklist's generic table (cases + chats mixed, sorted by due date) is usable on mobile — kind indicator, title, and Claim/Open actions are all still legible and tappable
 - [ ] Claim-race UX: trigger a 409 (two admin sessions racing the same unclaimed chat) and confirm the inline error + refetch reads clearly, not just a raw error string
 - [ ] Spot-check the widget (bubble + iframe) in at least one non-Chromium browser — it runs on arbitrary third-party customer sites, so cross-browser rendering matters more here than for the rest of the app
+- [ ] Agent's "Close conversation" button (in the chat panel) is usable on mobile; after closing, the input disables and the closed notice is readable at narrow widths
+- [ ] Supervisor Dashboard (`/supervisor`) filter row (Queue / Profile / Agent search / date range) wraps sensibly on mobile instead of overflowing; results table is at least horizontally scrollable at mobile width
+- [ ] Access Management → a Profile's new Supervised Queues / Supervised Profiles sections are usable on mobile — pickers and per-row delete buttons stay reachable
 
 ## Cross-browser
 

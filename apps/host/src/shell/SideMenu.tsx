@@ -9,6 +9,7 @@ import GavelIcon from "@mui/icons-material/Gavel";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import ExtensionIcon from "@mui/icons-material/Extension";
+import SupervisorAccountIcon from "@mui/icons-material/SupervisorAccount";
 import { ALL_NAV_ITEMS } from "@riptacrm/shared-types";
 import type { NavItem } from "@riptacrm/shared-types";
 import { useAuth } from "@riptacrm/auth-client";
@@ -23,6 +24,7 @@ const ICONS: Record<string, ComponentType> = {
   broadcast: CampaignIcon,
   "access-management": AdminPanelSettingsIcon,
   custom: ExtensionIcon,
+  supervisor: SupervisorAccountIcon,
 };
 
 export const SIDE_MENU_WIDTH = 240;

@@ -160,6 +160,23 @@ conversationsRouter.post("/conversations/:id/claim", requirePermission("webchat-
   res.json(toConversation(updated));
 });
 
+// Marks a conversation resolved — the only product-facing way status ever becomes CLOSED
+// (previously nothing did; "answered" counts on the Supervisor Dashboard depend on this).
+// Gated webchat-agent, not restricted to the assignee specifically — same permission-level
+// gating (no per-record ownership checks) as every other route in this file. Idempotent:
+// closing an already-closed conversation just returns it unchanged.
+conversationsRouter.post("/conversations/:id/close", requirePermission("webchat-agent"), async (req, res) => {
+  const existing = await prisma.conversation.findUnique({ where: { id: req.params.id } });
+  if (!existing) return res.status(404).json({ error: "Conversation not found." });
+  if (existing.status === "CLOSED") return res.json(toConversation(existing));
+
+  const updated = await prisma.conversation.update({
+    where: { id: req.params.id },
+    data: { status: "CLOSED", closedAt: new Date() },
+  });
+  res.json(toConversation(updated));
+});
+
 conversationsRouter.post("/conversations/:id/messages", requirePermission("webchat-agent"), async (req, res) => {
   const body = req.body as { body?: string };
   if (!body.body?.trim()) return res.status(400).json({ error: "body is required." });

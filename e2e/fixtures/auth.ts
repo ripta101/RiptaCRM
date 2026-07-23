@@ -15,6 +15,13 @@ async function login(page: Page, username: string, password: string) {
 
 export const loginAsAdmin = (page: Page) => login(page, "admin", "Passw0rd154@");
 export const loginAsFrontline = (page: Page) => login(page, "test", "Passw0rd154@");
+export const loginAsSupervisor = (page: Page) => login(page, "supervisor1", "Passw0rd154@");
+
+export async function openSupervisorDashboard(page: Page) {
+  await page.getByRole("button", { name: "open menu" }).click();
+  await page.getByText("Supervisor Dashboard", { exact: true }).click();
+  await page.waitForSelector('text="Active Interactions"', { timeout: 15_000 });
+}
 
 export async function openCaseManagement(page: Page) {
   await page.getByRole("button", { name: "open menu" }).click();

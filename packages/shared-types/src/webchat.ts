@@ -145,3 +145,36 @@ export interface SendMessageRequest {
   siteKey: string;
   body: string;
 }
+
+// Supervisor Dashboard — see webchat-api's routes/supervisor.ts.
+export interface SupervisorScopeQueue {
+  id: string;
+  name: string;
+}
+
+export interface SupervisorScopeProfile {
+  id: string;
+  name: string;
+}
+
+export interface SupervisorAgentSummary {
+  userId: string;
+  name: string;
+  username: string;
+  statusLabel: string | null;
+  isAvailableForChats: boolean;
+  // Which of the supervisor's granted queues/profiles make this agent visible — an agent
+  // can be visible via more than one grant at once (union semantics).
+  visibleViaQueueIds: string[];
+  visibleViaProfileIds: string[];
+  activeInteractionCount: number;
+  answeredCount: number;
+}
+
+export interface SupervisorAgentsResponse {
+  scope: {
+    queues: SupervisorScopeQueue[];
+    profiles: SupervisorScopeProfile[];
+  };
+  results: SupervisorAgentSummary[];
+}

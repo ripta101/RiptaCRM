@@ -1,5 +1,7 @@
 import type {
   AddProfileMemberInput,
+  AddSupervisedProfileInput,
+  AddSupervisedQueueInput,
   CreateMenuItemInput,
   CreateProfileInput,
   CustomMenuItem,
@@ -46,6 +48,17 @@ export const addProfileMember = (profileId: string, input: AddProfileMemberInput
 export const removeProfileMember = (profileId: string, userId: string, token?: string | null) =>
   request<void>(`/api/profiles/${profileId}/members/${userId}`, { method: "DELETE" }, token);
 
+// Supervisor-scope grants: which WebChat queues and which other Profiles this Profile's
+// members may see on the Supervisor Dashboard.
+export const addSupervisedQueue = (profileId: string, input: AddSupervisedQueueInput, token?: string | null) =>
+  request<Profile>(`/api/profiles/${profileId}/supervised-queues`, { method: "POST", body: JSON.stringify(input) }, token);
+export const removeSupervisedQueue = (profileId: string, queueId: string, token?: string | null) =>
+  request<void>(`/api/profiles/${profileId}/supervised-queues/${queueId}`, { method: "DELETE" }, token);
+export const addSupervisedProfile = (profileId: string, input: AddSupervisedProfileInput, token?: string | null) =>
+  request<Profile>(`/api/profiles/${profileId}/supervised-profiles`, { method: "POST", body: JSON.stringify(input) }, token);
+export const removeSupervisedProfile = (profileId: string, supervisedProfileId: string, token?: string | null) =>
+  request<void>(`/api/profiles/${profileId}/supervised-profiles/${supervisedProfileId}`, { method: "DELETE" }, token);
+
 // Users (for the member picker)
 export const listUsers = (params: Record<string, string | undefined> = {}, token?: string | null) => {
   const qs = new URLSearchParams();
@@ -54,6 +67,11 @@ export const listUsers = (params: Record<string, string | undefined> = {}, token
   }
   return request<{ results: UserSummary[] }>(`/api/users?${qs.toString()}`, undefined, token).then((r) => r.results);
 };
+
+// WebChat queues (for the Supervised Queues picker) — proxied through this service's own
+// backend (routes/webchatQueues.ts), same reasoning as the Users proxy above.
+export const listWebchatQueues = (token?: string | null) =>
+  request<{ results: { id: string; name: string }[] }>("/api/webchat-queues", undefined, token).then((r) => r.results);
 
 // Menu items
 export const listMenuItems = (token?: string | null) =>

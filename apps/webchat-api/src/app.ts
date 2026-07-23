@@ -8,6 +8,7 @@ import { publicRouter } from "./routes/public";
 import { routingRulesRouter } from "./routes/routingRules";
 import { sitesRouter } from "./routes/sites";
 import { queuesRouter } from "./routes/queues";
+import { supervisorRouter } from "./routes/supervisor";
 import { usersRouter } from "./routes/users";
 
 export function createApp() {
@@ -39,6 +40,7 @@ export function createApp() {
   app.use("/api", cors({ origin: origins }), agentStatusRouter);
   app.use("/api", cors({ origin: origins }), conversationsRouter);
   app.use("/api", cors({ origin: origins }), usersRouter);
+  app.use("/api", cors({ origin: origins }), supervisorRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found." });

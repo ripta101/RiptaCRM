@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Paper, TextField, Typography } from "@mui/material";
 import { io, type Socket } from "socket.io-client";
 import type { ConversationWithMessages, Message } from "@riptacrm/shared-types";
-import { getConversation, sendAgentMessage } from "./api/client";
+import { closeConversation, getConversation, sendAgentMessage } from "./api/client";
 
 const WEBCHAT_API_URL = import.meta.env.VITE_WEBCHAT_API_URL ?? "http://localhost:4315";
 
@@ -32,6 +32,7 @@ export default function WebChatAgentModule({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -98,6 +99,22 @@ export default function WebChatAgentModule({
     }
   }
 
+  // Marks the conversation resolved — distinct from the interaction tab's own X-close
+  // (a Host UI concept, see InteractionsContext), which just hides this panel. The tab
+  // stays open afterward so the agent can still review the transcript.
+  async function handleClose() {
+    if (closing || conversation?.status === "CLOSED") return;
+    setClosing(true);
+    try {
+      const updated = await closeConversation(conversationId, authToken);
+      setConversation((prev) => (prev ? { ...prev, status: updated.status, closedAt: updated.closedAt } : prev));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to close conversation.");
+    } finally {
+      setClosing(false);
+    }
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -110,11 +127,26 @@ export default function WebChatAgentModule({
     return <Alert severity="error">{error}</Alert>;
   }
 
+  const isClosed = conversation?.status === "CLOSED";
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-        {conversation?.pageUrlPath}
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+        <Typography variant="subtitle2" color="text.secondary">
+          {conversation?.pageUrlPath}
+        </Typography>
+        {!isClosed && (
+          <Button size="small" variant="outlined" disabled={closing} onClick={handleClose}>
+            Close conversation
+          </Button>
+        )}
+      </Box>
+
+      {isClosed && (
+        <Alert severity="info" sx={{ mb: 1 }}>
+          This conversation is closed.
+        </Alert>
+      )}
 
       {error && (
         <Alert severity="warning" sx={{ mb: 1 }} onClose={() => setError(null)}>
@@ -152,12 +184,13 @@ export default function WebChatAgentModule({
           size="small"
           placeholder="Type a message…"
           value={input}
+          disabled={isClosed}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSend();
           }}
         />
-        <Button variant="contained" disabled={sending || !input.trim()} onClick={handleSend}>
+        <Button variant="contained" disabled={isClosed || sending || !input.trim()} onClick={handleSend}>
           Send
         </Button>
       </Box>

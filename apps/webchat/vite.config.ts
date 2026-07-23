@@ -11,6 +11,7 @@ export default defineConfig({
       exposes: {
         "./WebChatModule": "./src/WebChatModule.tsx",
         "./WebChatAgentModule": "./src/WebChatAgentModule.tsx",
+        "./WebChatSupervisorModule": "./src/WebChatSupervisorModule.tsx",
       },
       shared: {
         react: { singleton: true, requiredVersion: false },

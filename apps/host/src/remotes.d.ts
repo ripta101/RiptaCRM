@@ -73,3 +73,14 @@ declare module "webChat/WebChatAgentModule" {
   const WebChatAgentModule: ComponentType<WebChatAgentModuleProps>;
   export default WebChatAgentModule;
 }
+
+declare module "webChat/WebChatSupervisorModule" {
+  import type { ComponentType } from "react";
+
+  export interface WebChatSupervisorModuleProps {
+    authToken?: string | null;
+  }
+
+  const WebChatSupervisorModule: ComponentType<WebChatSupervisorModuleProps>;
+  export default WebChatSupervisorModule;
+}

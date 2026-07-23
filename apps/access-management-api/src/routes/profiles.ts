@@ -8,7 +8,7 @@ import { requirePermission } from "../lib/requirePermission";
 
 export const profilesRouter = Router();
 
-const WITH_RELATIONS = { navItems: true, members: true } as const;
+const WITH_RELATIONS = { navItems: true, members: true, supervisedQueues: true, supervisorOf: true } as const;
 const VALID_DASHBOARD_TYPES: DashboardType[] = ["frontline", "admin"];
 
 profilesRouter.get("/profiles", requirePermission("access-management-config"), async (req, res) => {
@@ -203,3 +203,82 @@ profilesRouter.delete("/profiles/:id/members/:userId", requirePermission("access
   }
   res.status(204).end();
 });
+
+// Supervisor-scope grants: which WebChat queues and which other Profiles this Profile's
+// members may see on the Supervisor Dashboard (webchat-api's GET /supervisor/agents).
+// Dedicated sub-resource endpoints, same shape as /members above — deliberately not a
+// wholesale-replace-on-PATCH like navItemIds, since these are open-ended DB-driven
+// collections (not a small fixed set), better suited to list+add+remove.
+profilesRouter.post("/profiles/:id/supervised-queues", requirePermission("access-management-config"), async (req, res) => {
+  const body = req.body as { queueId?: string };
+  if (!body.queueId?.trim()) return res.status(400).json({ error: "queueId is required." });
+
+  const profile = await prisma.profile.findUnique({ where: { id: req.params.id } });
+  if (!profile) return res.status(404).json({ error: "Profile not found." });
+
+  try {
+    await prisma.profileSupervisedQueue.create({ data: { profileId: profile.id, queueId: body.queueId.trim() } });
+  } catch (err) {
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "This queue is already supervised by this profile." });
+    throw err;
+  }
+
+  const updated = await prisma.profile.findUniqueOrThrow({ where: { id: profile.id }, include: WITH_RELATIONS });
+  res.status(201).json(await toProfile(updated));
+});
+
+profilesRouter.delete(
+  "/profiles/:id/supervised-queues/:queueId",
+  requirePermission("access-management-config"),
+  async (req, res) => {
+    try {
+      await prisma.profileSupervisedQueue.delete({
+        where: { profileId_queueId: { profileId: req.params.id, queueId: req.params.queueId } },
+      });
+    } catch (err) {
+      if (!isRecordNotFoundError(err)) throw err;
+    }
+    res.status(204).end();
+  },
+);
+
+profilesRouter.post("/profiles/:id/supervised-profiles", requirePermission("access-management-config"), async (req, res) => {
+  const body = req.body as { supervisedProfileId?: string };
+  if (!body.supervisedProfileId?.trim()) return res.status(400).json({ error: "supervisedProfileId is required." });
+  const supervisedProfileId = body.supervisedProfileId.trim();
+  if (supervisedProfileId === req.params.id) {
+    return res.status(400).json({ error: "A profile cannot supervise itself." });
+  }
+
+  const [profile, target] = await Promise.all([
+    prisma.profile.findUnique({ where: { id: req.params.id } }),
+    prisma.profile.findUnique({ where: { id: supervisedProfileId } }),
+  ]);
+  if (!profile) return res.status(404).json({ error: "Profile not found." });
+  if (!target) return res.status(400).json({ error: "Target profile does not exist." });
+
+  try {
+    await prisma.profileSupervisedProfile.create({ data: { profileId: profile.id, supervisedProfileId } });
+  } catch (err) {
+    if (isUniqueConstraintError(err)) return res.status(409).json({ error: "This profile is already supervised by this profile." });
+    throw err;
+  }
+
+  const updated = await prisma.profile.findUniqueOrThrow({ where: { id: profile.id }, include: WITH_RELATIONS });
+  res.status(201).json(await toProfile(updated));
+});
+
+profilesRouter.delete(
+  "/profiles/:id/supervised-profiles/:supervisedProfileId",
+  requirePermission("access-management-config"),
+  async (req, res) => {
+    try {
+      await prisma.profileSupervisedProfile.delete({
+        where: { profileId_supervisedProfileId: { profileId: req.params.id, supervisedProfileId: req.params.supervisedProfileId } },
+      });
+    } catch (err) {
+      if (!isRecordNotFoundError(err)) throw err;
+    }
+    res.status(204).end();
+  },
+);

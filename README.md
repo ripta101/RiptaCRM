@@ -55,6 +55,7 @@ Lets a business admin control who can access what, replacing what used to be a h
 - Archiving or deleting a Profile is blocked while it still has members assigned — unassign them first
 - A read-only "Users" tab shows every user and which Profile(s) they currently hold, since membership is many-to-many and isn't otherwise visible in one place
 - **Menu Items**: create custom menu entries at runtime and grant them to Profiles exactly like the built-in ones. Each one is either an **embedded webpage** (any URL, rendered in an iframe — no allowlist, admin's responsibility) or a **Module Federation remote loaded dynamically at runtime** (admin enters a remote entry URL, the remote's own declared federation name, and an exposed module — not limited to the app's 4 built-in remotes). A dynamically-loaded remote runs unsandboxed in the Host's own origin and is handed the viewing user's full session (including their auth token) as a prop, since it already has ambient access to that origin's `sessionStorage` the moment it's loaded regardless — see `docs/architecture.md` for the full reasoning. Deleting a menu item that's still granted to a Profile is always allowed; it just stops appearing in that Profile's menu next login
+- **Supervised Queues / Supervised Profiles**: per-Profile grants powering WebChat's Supervisor Dashboard — which WebChat Queues and which other Profiles that Profile's members may see agent status/interaction counts for. A Profile isn't a fixed "Supervisor" type; any Profile granted the `webchat-supervisor` menu item plus a scope becomes a supervisor, so multiple independently-scoped supervisor Profiles can coexist
 
 ### Message Broadcast
 Lets a business admin push announcements to logged-in users.
@@ -75,6 +76,8 @@ Lets a customer website embed live chat, routes inbound conversations to agents,
 - Real-time delivery (both directions — visitor and agent) is a genuine WebSocket connection (`socket.io`), not polling; starting a chat, sending a message, assigning, and claiming all still go through ordinary REST calls that emit a socket event once the write commits
 - Chat continuity across a page reload/re-visit is a browser-stored (`localStorage`) conversation id — no customer login exists yet, but conversations carry a nullable `customerAccountId` seam for one to be wired in later
 - Admin config MFE covers Sites (siteKey + embed snippet, regenerate key), Queues (members + auto-popup + capacity overrides), Routing Rules (per site), and Agent Statuses (the pickable status list + which ones count as available for chats)
+- Agents can mark a conversation **Closed** from their chat panel once resolved (a live conversation isn't otherwise auto-closed); the visitor's widget surfaces a clear error if they try to send another message afterward
+- **Supervisor Dashboard** (`webchat-supervisor` nav item, its own MFE module, page at `/supervisor`): a live roster of agent status, active-interaction count, and a date-range "chats answered" count, filterable by Queue, Profile, or a specific agent. Which Queues and which other Profiles a Profile's members can see is admin-granted per-Profile (Access Management → a Profile's Supervised Queues/Profiles sections) — visibility is a union of both grants, so multiple differently-scoped Supervisor profiles can coexist (e.g. one per team/region)
 - A realistic multi-page sample site (`apps/webchat-sample-site` — Home / Pricing / Support / a React+MF embed demo page) demonstrates both embed paths end-to-end
 - WebChat owns its **own** Queue/QueueMember-shaped tables — a deliberate duplicate of Case Management's Queues, not a reuse, so live chat routing has no runtime dependency on another module's database
 - The public, visitor-facing endpoints (`webchat-api`'s `/api/public/*`) are the app's first genuinely unauthenticated surface — a visitor has no session at all. Trust is a per-Site `siteKey` (not secret) plus a dynamic CORS origin check and rate limiting, not `requirePermission()`. See "WebChat: the first public, unauthenticated endpoints" in `docs/architecture.md`
@@ -119,13 +122,13 @@ See [docs/architecture.md](docs/architecture.md) for a diagram of how the module
    cp apps/access-management-api/.env.example apps/access-management-api/.env
    pnpm --filter @riptacrm/access-management-api db:migrate
    ```
-   Applies the migration and seeds the two starter Profiles ("Business Admin", protected, and "Frontline User"), assigned to the Auth module's seeded users. Set this up **before** the Auth module below — login depends on it being reachable.
+   Applies the migration and seeds three starter Profiles ("Business Admin", protected; "Frontline User"; and "Supervisor", scoped to the seeded "General Support" queue and "Frontline User" profile), assigned to the Auth module's seeded users. Set this up **before** the Auth module below — login depends on it being reachable.
 6. Set up the Auth module's database:
    ```
    cp apps/auth-api/.env.example apps/auth-api/.env
    pnpm --filter @riptacrm/auth-api db:migrate
    ```
-   Applies the migration and seeds 12 demo users (all password `Passw0rd154@`) with bcrypt-hashed passwords.
+   Applies the migration and seeds 13 demo users (all password `Passw0rd154@`) with bcrypt-hashed passwords, including `supervisor1` for the Supervisor Dashboard.
 7. Set up the Message Broadcast module's database:
    ```
    cp apps/message-broadcast-api/.env.example apps/message-broadcast-api/.env
@@ -162,11 +165,12 @@ This starts all services together:
 - WebChat widget — http://localhost:5179 (not a single "app": serves three build artifacts — `/loader/loader.js`, `/iframe/`, `/mfe/remoteEntry.js` — from one static server)
 - WebChat sample customer site — http://localhost:5180
 
-The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel; the Host calls the Auth API to log in; the Auth API calls the Access Management API server-to-server on every login to resolve the user's Profile(s) (and fails the login loudly, not softly, if that call fails); the Host calls the Message Broadcast API to show and poll the Dashboard's Announcements panel; the Message Broadcast API calls the Access Management API to populate its composer's "target profiles" picker; the WebChat API calls the Access Management API server-to-server to resolve an agent's default chat capacity, failing closed (capacity `0`, chat stays queued) if that call fails; and the WebChat sample site's embedded widget (loaded from the WebChat widget's static server) talks to the WebChat API over both REST and WebSocket — start them all (`pnpm dev` does this automatically) for the full app to work.
+The Customer API calls the Case Management API server-to-server to populate a customer's "Open Cases" panel; the Host calls the Auth API to log in; the Auth API calls the Access Management API server-to-server on every login to resolve the user's Profile(s) (and fails the login loudly, not softly, if that call fails); the Host calls the Message Broadcast API to show and poll the Dashboard's Announcements panel; the Message Broadcast API calls the Access Management API to populate its composer's "target profiles" picker; the WebChat API calls the Access Management API server-to-server to resolve an agent's default chat capacity, failing closed (capacity `0`, chat stays queued) if that call fails; the WebChat API also calls the Access Management API to resolve a Supervisor's granted scope (queues/profiles) for the Supervisor Dashboard, failing soft (an empty dashboard) since this only powers a display; the Access Management API calls the WebChat API server-to-server to show real queue names in a Profile's Supervised Queues picker, also failing soft; and the WebChat sample site's embedded widget (loaded from the WebChat widget's static server) talks to the WebChat API over both REST and WebSocket — start them all (`pnpm dev` does this automatically) for the full app to work.
 
 Open http://localhost:5173 and log in with one of:
 - `test` / `Passw0rd154@` — Frontline User profile
 - `admin` / `Passw0rd154@` — Business Admin profile (protected)
+- `supervisor1` / `Passw0rd154@` — Supervisor profile (WebChat Supervisor Dashboard)
 
 **Note**: login now requires both the Auth API and the Access Management API to be running. If you run `apps/host` standalone in its own terminal instead of `pnpm dev` from the root, also start `apps/auth-api` and `apps/access-management-api` (`pnpm --filter @riptacrm/auth-api dev` and `pnpm --filter @riptacrm/access-management-api dev`) separately, or login will fail with a network error (or a 503, if only Access Management is missing).
 

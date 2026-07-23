@@ -2,6 +2,8 @@ import type {
   MenuItem as PrismaMenuItem,
   Profile as PrismaProfile,
   ProfileNavItem as PrismaProfileNavItem,
+  ProfileSupervisedProfile as PrismaProfileSupervisedProfile,
+  ProfileSupervisedQueue as PrismaProfileSupervisedQueue,
   ProfileUser as PrismaProfileUser,
 } from "../../generated/prisma";
 import { ALL_NAV_ITEMS } from "@riptacrm/shared-types";
@@ -13,6 +15,8 @@ const BUILT_IN_NAV_ITEM_IDS = new Set(ALL_NAV_ITEMS.map((item) => item.id));
 type ProfileWithRelations = PrismaProfile & {
   navItems: PrismaProfileNavItem[];
   members: PrismaProfileUser[];
+  supervisedQueues: PrismaProfileSupervisedQueue[];
+  supervisorOf: PrismaProfileSupervisedProfile[];
 };
 
 export function toCustomMenuItem(m: PrismaMenuItem): CustomMenuItem {
@@ -49,6 +53,8 @@ export async function toProfile(p: ProfileWithRelations): Promise<Profile> {
     navItemIds,
     customMenuItems,
     memberUserIds: p.members.map((m) => m.userId),
+    supervisedQueueIds: p.supervisedQueues.map((q) => q.queueId),
+    supervisedProfileIds: p.supervisorOf.map((sp) => sp.supervisedProfileId),
     archivedAt: p.archivedAt ? p.archivedAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),

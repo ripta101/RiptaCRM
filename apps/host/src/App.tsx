@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ITSupportPage } from "./pages/ITSupportPage";
 import { WebChatConfigPage } from "./pages/WebChatConfigPage";
+import { SupervisorDashboardPage } from "./pages/SupervisorDashboardPage";
 import { EmailConfigPage } from "./pages/EmailConfigPage";
 import { CaseManagementConfigPage } from "./pages/CaseManagementConfigPage";
 import { MessageBroadcastConfigPage } from "./pages/MessageBroadcastConfigPage";
@@ -28,6 +29,9 @@ export function App() {
           </Route>
           <Route element={<NavItemRoute navItemId="webchat-config" />}>
             <Route path="/config/webchat" element={<WebChatConfigPage />} />
+          </Route>
+          <Route element={<NavItemRoute navItemId="webchat-supervisor" />}>
+            <Route path="/supervisor" element={<SupervisorDashboardPage />} />
           </Route>
           <Route element={<NavItemRoute navItemId="email-config" />}>
             <Route path="/config/email" element={<EmailConfigPage />} />

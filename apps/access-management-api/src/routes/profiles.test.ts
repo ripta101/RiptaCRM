@@ -259,6 +259,102 @@ describe("maxConcurrentChats", () => {
   });
 });
 
+describe("Supervised queues", () => {
+  it("adds, lists, and idempotently removes a supervised queue", async () => {
+    const profile = await createProfile();
+    const queueId = `queue-${randomUUID()}`;
+
+    const added = await request(app).post(`/api/profiles/${profile.body.id}/supervised-queues`).set(SERVICE_KEY_HEADER).send({ queueId });
+    expect(added.status).toBe(201);
+    expect(added.body.supervisedQueueIds).toEqual([queueId]);
+
+    const removed = await request(app).delete(`/api/profiles/${profile.body.id}/supervised-queues/${queueId}`).set(SERVICE_KEY_HEADER);
+    expect(removed.status).toBe(204);
+    const removedAgain = await request(app).delete(`/api/profiles/${profile.body.id}/supervised-queues/${queueId}`).set(SERVICE_KEY_HEADER);
+    expect(removedAgain.status).toBe(204); // idempotent
+
+    const final = await request(app).get(`/api/profiles/${profile.body.id}`).set(SERVICE_KEY_HEADER);
+    expect(final.body.supervisedQueueIds).toEqual([]);
+  });
+
+  it("rejects adding the same queue twice with 409", async () => {
+    const profile = await createProfile();
+    const queueId = `queue-${randomUUID()}`;
+    await request(app).post(`/api/profiles/${profile.body.id}/supervised-queues`).set(SERVICE_KEY_HEADER).send({ queueId });
+    const second = await request(app).post(`/api/profiles/${profile.body.id}/supervised-queues`).set(SERVICE_KEY_HEADER).send({ queueId });
+    expect(second.status).toBe(409);
+  });
+
+  it("404s adding a supervised queue to a profile that doesn't exist", async () => {
+    const res = await request(app).post("/api/profiles/does-not-exist/supervised-queues").set(SERVICE_KEY_HEADER).send({ queueId: "q-1" });
+    expect(res.status).toBe(404);
+  });
+
+  it("requires a non-empty queueId", async () => {
+    const profile = await createProfile();
+    const res = await request(app).post(`/api/profiles/${profile.body.id}/supervised-queues`).set(SERVICE_KEY_HEADER).send({});
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("Supervised profiles", () => {
+  it("adds, lists, and idempotently removes a supervised profile", async () => {
+    const supervisor = await createProfile();
+    const target = await createProfile();
+
+    const added = await request(app)
+      .post(`/api/profiles/${supervisor.body.id}/supervised-profiles`).set(SERVICE_KEY_HEADER)
+      .send({ supervisedProfileId: target.body.id });
+    expect(added.status).toBe(201);
+    expect(added.body.supervisedProfileIds).toEqual([target.body.id]);
+
+    const removed = await request(app)
+      .delete(`/api/profiles/${supervisor.body.id}/supervised-profiles/${target.body.id}`).set(SERVICE_KEY_HEADER);
+    expect(removed.status).toBe(204);
+    const removedAgain = await request(app)
+      .delete(`/api/profiles/${supervisor.body.id}/supervised-profiles/${target.body.id}`).set(SERVICE_KEY_HEADER);
+    expect(removedAgain.status).toBe(204); // idempotent
+  });
+
+  it("rejects a profile supervising itself with 400", async () => {
+    const profile = await createProfile();
+    const res = await request(app)
+      .post(`/api/profiles/${profile.body.id}/supervised-profiles`).set(SERVICE_KEY_HEADER)
+      .send({ supervisedProfileId: profile.body.id });
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when the target profile doesn't exist", async () => {
+    const profile = await createProfile();
+    const res = await request(app)
+      .post(`/api/profiles/${profile.body.id}/supervised-profiles`).set(SERVICE_KEY_HEADER)
+      .send({ supervisedProfileId: "does-not-exist" });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects adding the same supervised profile twice with 409", async () => {
+    const supervisor = await createProfile();
+    const target = await createProfile();
+    await request(app).post(`/api/profiles/${supervisor.body.id}/supervised-profiles`).set(SERVICE_KEY_HEADER).send({ supervisedProfileId: target.body.id });
+    const second = await request(app)
+      .post(`/api/profiles/${supervisor.body.id}/supervised-profiles`).set(SERVICE_KEY_HEADER)
+      .send({ supervisedProfileId: target.body.id });
+    expect(second.status).toBe(409);
+  });
+
+  it("cascades away the grant when the supervised profile itself is deleted", async () => {
+    const supervisor = await createProfile();
+    const target = await createProfile();
+    await request(app).post(`/api/profiles/${supervisor.body.id}/supervised-profiles`).set(SERVICE_KEY_HEADER).send({ supervisedProfileId: target.body.id });
+
+    await request(app).delete(`/api/profiles/${target.body.id}`).set(SERVICE_KEY_HEADER);
+    createdProfileIds.splice(createdProfileIds.indexOf(target.body.id), 1); // already gone
+
+    const res = await request(app).get(`/api/profiles/${supervisor.body.id}`).set(SERVICE_KEY_HEADER);
+    expect(res.body.supervisedProfileIds).toEqual([]);
+  });
+});
+
 describe("GET /profiles/default-webchat-capacity", () => {
   it("returns the max maxConcurrentChats across the user's non-archived profiles", async () => {
     const userId = `user-${randomUUID()}`;

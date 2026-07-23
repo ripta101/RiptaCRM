@@ -52,6 +52,23 @@ async function main() {
       members: { create: FRONTLINE_USER_IDS.map((userId) => ({ userId })) },
     },
   });
+
+  await prisma.profile.create({
+    data: {
+      id: "profile-supervisor",
+      name: "Supervisor",
+      isProtected: false,
+      // "frontline" per the confirmed design decision: this feature deliberately does NOT
+      // introduce a new dashboardType — Supervisor access is purely a grantable nav item
+      // (webchat-supervisor) plus a scope grant, not a new shell layout.
+      dashboardType: "frontline",
+      canStartInteractions: false,
+      navItems: { create: ["home", "webchat-supervisor"].map((navItemId) => ({ navItemId })) },
+      members: { create: [{ userId: "user-supervisor-1" }] },
+      supervisedQueues: { create: [{ queueId: "queue-general-support" }] },
+      supervisorOf: { create: [{ supervisedProfileId: "profile-frontline-user" }] },
+    },
+  });
 }
 
 main()

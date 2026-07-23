@@ -8,6 +8,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Home", path: "/", icon: "home" },
   { id: "it-support", label: "IT Support", path: "/it-support", icon: "it-support" },
   { id: "webchat-config", label: "WebChat", path: "/config/webchat", icon: "webchat" },
+  { id: "webchat-supervisor", label: "Supervisor Dashboard", path: "/supervisor", icon: "supervisor" },
   { id: "email-config", label: "Email", path: "/config/email", icon: "email" },
   {
     id: "case-management-config",

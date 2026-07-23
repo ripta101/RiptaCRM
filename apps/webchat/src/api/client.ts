@@ -11,6 +11,7 @@ import type {
   Message,
   RoutingRule,
   Site,
+  SupervisorAgentsResponse,
   UpdateAgentStatusOptionInput,
   UpdateRoutingRuleInput,
   UpdateSiteInput,
@@ -120,6 +121,20 @@ export const assignConversation = (id: string, input: { assignedToUserId: string
   request<Conversation>(`/api/conversations/${id}/assign`, { method: "POST", body: JSON.stringify(input) }, token);
 export const sendAgentMessage = (id: string, body: string, token?: string | null) =>
   request<Message>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ body }) }, token);
+export const closeConversation = (id: string, token?: string | null) =>
+  request<Conversation>(`/api/conversations/${id}/close`, { method: "POST" }, token);
+
+// Supervisor Dashboard
+export const getSupervisorAgents = (
+  params: { closedFrom: string; closedTo: string; queueId?: string; supervisedProfileId?: string; userId?: string },
+  token?: string | null,
+) => {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) qs.set(key, value);
+  }
+  return request<SupervisorAgentsResponse>(`/api/supervisor/agents?${qs.toString()}`, undefined, token);
+};
 
 // Users (for the member/agent pickers)
 export const listUsers = (params: Record<string, string | undefined> = {}, token?: string | null) => {

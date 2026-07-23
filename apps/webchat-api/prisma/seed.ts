@@ -30,6 +30,10 @@ async function main() {
 
   const generalSupport = await prisma.webChatQueue.create({
     data: {
+      // Fixed — nothing outside this service has ever needed to reference a WebChatQueue by
+      // id before; access-management-api's seed grants this id as a Supervisor profile's
+      // supervised queue and needs it to be deterministic across a fresh db:seed.
+      id: "queue-general-support",
       name: "General Support",
       autoPopup: true,
       members: { create: FRONTLINE_MEMBER_IDS.map((userId) => ({ userId })) },

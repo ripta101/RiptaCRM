@@ -55,7 +55,8 @@ graph LR
     AccessAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> AuthAPI
     BroadcastAPI -- "HTTP REST (server-to-server,<br/>fails soft)" --> AccessAPI
     AuthAPI -- "HTTP REST (server-to-server,<br/>fails LOUD — see below)" --> AccessAPI
-    WebChatAPI -- "HTTP REST (server-to-server,<br/>fails CLOSED — see below)" --> AccessAPI
+    WebChatAPI -- "HTTP REST (server-to-server,<br/>capacity lookup fails CLOSED — see below;<br/>Supervisor scope lookup fails soft)" --> AccessAPI
+    AccessAPI -- "HTTP REST (server-to-server,<br/>fails soft — queue names for<br/>the Supervised Queues picker)" --> WebChatAPI
     Host -- "HTTP REST (direct,<br/>OpenCasesWidget only)" --> CaseAPI
     Host -- "HTTP REST (login)" --> AuthAPI
     Host -- "HTTP REST (direct,<br/>BroadcastPanelWidget only)" --> BroadcastAPI
@@ -190,6 +191,8 @@ Unlike Message Broadcast's interval polling (below), WebChat needs genuine low-l
 **A namespace's rooms are private to that namespace** — `io.to("someRoom")` (bare, no `.of(...)`) operates on the default `"/"` namespace, which nothing in this app ever connects to, so it silently emits to nobody. Since a conversation has members in *both* `/visitor` and `/agents` (each joins a same-named `conversation:<id>` room, but in their own namespace's separate room registry), broadcasting a conversation event needs to explicitly target both — see `emitToConversationRoom()`/`emitToAgent()` in `socketServer.ts`, the only correct way to emit from a route handler. This was a real bug caught by this feature's own e2e spec: every emit initially used the bare form, so `chat:assigned` and `message:new` were computed and "sent" correctly but delivered to an empty namespace and silently dropped — the fix is now the only emit path used anywhere in this service.
 
 **Capacity resolution fails closed, not soft**: `services/routeConversation.ts`'s `resolveEffectiveCapacity(userId)` checks a local `AgentCapacityOverride` first (no network call), else calls `access-management-api`'s `GET /api/profiles/default-webchat-capacity?userId=...`. If that call fails, effective capacity is `0` — the conversation stays queued rather than risking a silent over-assignment to an agent whose real capacity couldn't be confirmed. This is the opposite default from every other cross-service read in this codebase (which fails soft to an empty/degraded result); a live customer conversation being delayed is a much smaller problem than one being silently dropped onto an already-overloaded agent.
+
+**Supervisor Dashboard: same edge, opposite failure posture.** `services/resolveSupervisorScope.ts` calls the same `access-management-api` used for capacity resolution, but to resolve a Supervisor's granted queues/profiles (`GET /api/profiles/:id`) — this one fails soft (empty scope), since it's powering a display, not a routing decision that risks over-assigning a live chat. The reverse edge (`access-management-api`'s `GET /api/webchat-queues` proxying `webchat-api`'s `GET /queues`, powering a Profile's Supervised Queues picker) also fails soft. Visibility itself is a union of two independent grants — `ProfileSupervisedQueue` (queue membership, a plain unvalidated `queueId` mirroring `ProfileUser.userId`'s cross-service trust model) and `ProfileSupervisedProfile` (a real local FK, since Profiles are local to `access-management-api`) — computed by the pure `lib/supervisorVisibility.ts`.
 
 ## Message Broadcast: interval polling, not long-polling or WebSockets
 

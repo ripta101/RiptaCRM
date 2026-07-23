@@ -157,4 +157,53 @@ test.describe("WebChat", () => {
       await setAgentStatus("user-1", null);
     }
   });
+
+  test("an agent can close a conversation, and the visitor can no longer send further messages", async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(90_000);
+
+    const visitorContext = await browser.newContext();
+    const visitorPage = await visitorContext.newPage();
+    let conversationId: string | undefined;
+
+    try {
+      await loginAsFrontline(page);
+      await expect(page.getByTestId("webchat-agent-socket-status")).toHaveAttribute("data-connected", "true", {
+        timeout: 10_000,
+      });
+      await page.getByTestId("agent-status-selector").click();
+      await page.getByRole("option", { name: "Available" }).click();
+
+      const [startResponse] = await Promise.all([
+        visitorPage.waitForResponse(
+          (res) => res.url().includes("/api/public/conversations") && res.request().method() === "POST",
+        ),
+        visitorPage.goto(`${SAMPLE_SITE_URL}/support.html`),
+      ]);
+      conversationId = (await startResponse.json()).id as string;
+
+      await visitorPage.getByRole("button", { name: "💬" }).click();
+      const widgetFrame = visitorPage.frameLocator("iframe[title='Chat with us']");
+      await widgetFrame.getByPlaceholder("Type a message…").fill("Hi, are you there?");
+      await widgetFrame.getByRole("button", { name: "Send" }).click();
+
+      await expect(page.getByRole("tab", { name: /Web Chat/i })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText("Hi, are you there?")).toBeVisible({ timeout: 10_000 });
+
+      await page.getByRole("button", { name: "Close conversation" }).click();
+      await expect(page.getByText("This conversation is closed.")).toBeVisible();
+      await expect(page.getByPlaceholder("Type a message…")).toBeDisabled();
+
+      // The visitor's widget doesn't know the chat closed until they try to send again —
+      // matches the pre-existing 409 behavior asserted at the API level in public.test.ts.
+      await widgetFrame.getByPlaceholder("Type a message…").fill("Still there?");
+      await widgetFrame.getByRole("button", { name: "Send" }).click();
+      await expect(widgetFrame.getByText(/Failed to send message \(409\)/)).toBeVisible({ timeout: 10_000 });
+    } finally {
+      if (conversationId) await deleteConversation(conversationId);
+      await visitorContext.close();
+    }
+  });
 });
